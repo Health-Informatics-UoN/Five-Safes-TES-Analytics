@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "tre-fx-federated-analysis"
+version = "0.1.0"
+description = "Federated analysis tools for TRE-FX"
+authors = ["Anwar"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "^2.2.6"
+scipy = "^1.15.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
