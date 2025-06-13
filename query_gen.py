@@ -31,26 +31,20 @@ paired_data AS (
 """
 
 ## This is a sample query to get some data for a contingency table
-contingency_qry = """SELECT
-  'gender_name' AS gender_name,
-  'race_name'   AS race_name,
-  'n'           AS n
-
-UNION ALL
-
--- Data rows
-SELECT
-  g.concept_name,
-  r.concept_name,
-  CAST(COUNT(*) AS TEXT)
+contingency_qry = """SELECT 
+  g.concept_name AS gender_name,
+  r.concept_name AS race_name,
+  COUNT(*) AS n
 FROM person p
 JOIN concept g ON p.gender_concept_id = g.concept_id
 JOIN concept r ON p.race_concept_id = r.concept_id
 WHERE p.race_concept_id IN (38003574, 38003584)
-GROUP BY
+GROUP BY 
   g.concept_name,
-  r.concept_name;
-"""
+  r.concept_name
+ORDER BY 
+  g.concept_name,
+  r.concept_name;"""
 
 
 analysis_queries = {
@@ -76,11 +70,14 @@ FROM paired_data;\n"""
 
 }
 
-analysis_type = "mean"
-qry = usr_qry + analysis_queries[analysis_type]
+#analysis_type = "mean"
+#qry = usr_qry + analysis_queries[analysis_type]
 
 
 #analysis_type = "PMCC"
 #qry = usr_qry_2 + analysis_queries[analysis_type]
+
+analysis_type = "contingency"
+qry = contingency_qry
 
 print(qry)

@@ -1,6 +1,9 @@
 import numpy as np
 from scipy import stats
 from datetime import datetime
+import csv
+from collections import defaultdict
+
 import boto3
 import json
 from botocore.config import Config
@@ -124,6 +127,23 @@ def combine_contingency_tables(contingency_tables):
     
     return labels
 
+def combine_contingency_files(filelist):
+    labels = defaultdict(int)
+    for file in filelist:
+        with open(file, 'r') as file:
+            reader = csv.reader(file)
+            labels["header"] = next(reader)
+            for row in reader:
+                if len(row) < 2:  # Skip rows without enough parts
+                    continue
+                row_without_count = row_without_count = ','.join(row[:-1])  # Get rest of row without count
+                labels[row_without_count] += int(row[-1])
+                print(row)
+            #reader = csv.DictReader(file)
+            #data = [row for row in reader]
+    array_table = dict_to_array(labels)
+    return array_table
+
 # ### dict of analysis types must include the return data format and the function to aggregate the data
 analysis_types = {
     "variance": { ## can also easily return the mean here
@@ -160,38 +180,21 @@ def import_data(input):
     print(values)
     return values
 
-def convert_datetime_format(date_str, output_format="%Y-%m-%d %H:%M:%S"):
-    """
-    Try to parse a date string using multiple common formats and convert to the specified output format.
-    
-    Args:
-        date_str (str): The date string to check and convert
-        output_format (str): The desired output format (default: YYYY-MM-DD hh:mm:ss)
-    
-    Returns:
-        str: The converted date string if successful, None if no format matches
-    """
-    formats = [
-        "%d/%m/%y %H:%M:%S",    # DD/MM/YY hh:mm:ss
-        "%d-%m-%Y %H:%M:%S",    # DD-MM-YYYY hh:mm:ss
-        "%Y-%m-%d %H:%M:%S",    # YYYY-MM-DD hh:mm:ss
-        "%d/%m/%Y %H:%M:%S",    # DD/MM/YYYY hh:mm:ss
-        "%d-%m-%y %H:%M:%S",    # DD-MM-YY hh:mm:ss
-        "%Y/%m/%d %H:%M:%S",    # YYYY/MM/DD hh:mm:ss
-        "%d/%m/%y",             # DD/MM/YY
-        "%d-%m-%Y",             # DD-MM-YYYY
-        "%Y-%m-%d",             # YYYY-MM-DD
-        "%d/%m/%Y"              # DD/MM/YYYY
-    ]
-    
-    for fmt in formats:
-        try:
-            return datetime.strptime(date_str, fmt).strftime(output_format)
-        except ValueError:
-            continue
-    return None
+def get_result_from_local(file):
+    #results = {}
+    with open(file, 'r') as file:
+        ### use this if you want to read it in as a dictionary, but it shouldn't be needed - the data is always in the same order
+        #reader = csv.DictReader(file)
+        #data = [row for row in reader]
+        
+        reader = csv.reader(file)
+        next(reader) ## skip the header row
+        for row in reader:
+            results = row
 
-def get_result():
+    return results
+
+def get_result_from_s3():
     ## s3://beacon7283outputtre/output.json
 
     ### s3.Object('bucketName', 'keyName') so an example to get the file s3://foobarBucketName/folderA/folderB/myFile.json would be 
@@ -220,7 +223,15 @@ def get_result():
         raise
 
 
-
+def combine_file_data(filelist):
+    data = None
+    for file in filelist:
+        file_data = np.array(get_result_from_local(file)).astype(float)
+        if data is None:
+            data = file_data.reshape(1,-1)  # First array, reshape to 2D
+        else:
+            data = np.vstack((data, file_data.reshape(1,-1)))  # Stack subsequent arrays
+    return data
 
 
 if __name__ == "__main__":
@@ -228,16 +239,25 @@ if __name__ == "__main__":
     ###################SETUP
     ### set some sample data - I've just used the same value for all inputs for now
     
-    analysis_type = "mean"
-    inputs = ["2,117", "2,117", "2,117"]
+    #filelist = ['TRE-FX Analytics/TES/outputs/output.csv', 'TRE-FX Analytics/TES/outputs/output2.csv']
 
-    analysis_type = "variance"
-    inputs = ["2,6929,117", "2,6929,117", "2,6929,117"]
+    #analysis_type = "mean"
+    
+    #inputs = ["2,117", "2,117", "2,117"]       
+    #input_data = combine_file_data(filelist)
+
+
+
+
+
+
+    #analysis_type = "variance"
+    #inputs = ["2,6929,117", "2,6929,117", "2,6929,117"]
     ######################################################### #########################################################
 
     ##########################SETUP
     ### sample data for contingency table
-    #analysis_type = "chi_squared_scipy"  # Change to "chi_squared_manual" for manual calculation
+    analysis_type = "chi_squared_scipy"  # Change to "chi_squared_manual" for manual calculation
 
     #contingency_table1 = """gender_name,race_name,n
     #FEMALE,Asian Indian,2
@@ -250,10 +270,13 @@ if __name__ == "__main__":
     #MALE,Japanese,4
     #FEMALE,Asian Indian,5
     #FEMALE,Japanese,1"""
+
+    filelist = ['TRE-FX Analytics/TES/outputs/output contingency.csv', 'TRE-FX Analytics/TES/outputs/output contingency2.csv']
+
     #inputs = [contingency_table1, contingency_table2]
     ##########################PREPROCESSING
-    #analysis_function = analysis_types[analysis_type]["aggregation_function"]
-    
+    analysis_function = analysis_types[analysis_type]["aggregation_function"]
+    input_data = combine_contingency_files(filelist)
     #if analysis_types[analysis_type]["return_format"] == "contingency_table":
     #    combined_table = combine_contingency_tables(inputs)
     #    print("\nCombined Contingency Table (dictionary):")
@@ -278,11 +301,9 @@ if __name__ == "__main__":
     result = analysis_function(input_data)
 
     ##########################OUTPUT
-    #print("\nResult:")
-    #print(result)
+    print("\nResult:")
+    print(result)
 
     #result = get_result()
     #print(result)
 
-    result = get_result()
-    print(result)
