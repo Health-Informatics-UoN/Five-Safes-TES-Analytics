@@ -3,6 +3,7 @@ from scipy import stats
 from typing import Dict, Any, Union, List
 from abc import ABC, abstractmethod
 
+## These classes are for the aggregation of data, and the analysis of data, i.e., to be run on the aggregator, NOT the client.
 
 class AnalysisBase(ABC):
     """

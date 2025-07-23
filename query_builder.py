@@ -88,6 +88,11 @@ ORDER BY category1, category2;""",
         Raises:
             ValueError: If analysis type is not supported
         """
+
+        ## if no analysis type is provided, just return the user query - so it can be executed directly.
+        if analysis_type == None:
+            return user_query
+
         if analysis_type not in self.analysis_templates:
             raise ValueError(f"Unsupported analysis type: {analysis_type}")
         
