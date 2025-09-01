@@ -1,4 +1,4 @@
-# TRE-FX Analytics
+# Five Safes TES Analytics
 
 A federated analysis framework for Trusted Research Environments (TREs) using object-oriented design.
 
