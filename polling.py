@@ -49,7 +49,7 @@ class Polling:
         while self.poll_minio:
             data = []
             for results_path in results_paths:
-                result = self.minio_client.get_object_smart(bucket, results_path)
+                result = self.minio_client.wait_for_object(bucket, results_path)
                 if result:
                     data.append(result)
             
