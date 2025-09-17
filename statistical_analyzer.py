@@ -136,10 +136,6 @@ class PMCCAnalysis(AnalysisBase):
             "sum_y2": sum_y2,
         }
 
-        # Calculate means
-        mean_x = sum_x / n
-        mean_y = sum_y / n
-
         # Calculate standard deviations
         std_x = np.sqrt(sum_x2 - (sum_x**2) / n)
         std_y = np.sqrt(sum_y2 - (sum_y**2) / n)
@@ -183,14 +179,14 @@ class ChiSquaredScipyAnalysis(AnalysisBase):
         self.aggregated_data = {"contingency_table": aggregated_data}
 
         # Get both corrected and uncorrected results
-        chi2_corrected, p_corrected, dof, expected = stats.chi2_contingency(
-            aggregated_data
-        )
-        chi2_uncorrected, p_uncorrected, _, _ = stats.chi2_contingency(
+        #chi2_corrected, p_corrected, dof, expected = stats.chi2_contingency(
+        #    aggregated_data
+        #)
+        chi2_uncorrected = stats.chi2_contingency(
             aggregated_data, correction=False
         )
 
-        return chi2_uncorrected
+        return chi2_uncorrected.statistic
 
 
 class ChiSquaredManualAnalysis(AnalysisBase):

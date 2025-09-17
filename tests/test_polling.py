@@ -1,12 +1,8 @@
 import pytest
 import polling
 
-from tes_client import TESClient, get_status_description
-from minio_client import MinIOClient
-
 
 ## [11, 27, 16, 49] are the end statuses
-
 
 @pytest.mark.parametrize(
     "status_code,expected_description",
