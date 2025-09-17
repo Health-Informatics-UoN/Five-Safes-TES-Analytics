@@ -6,10 +6,9 @@ from dotenv import load_dotenv
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from enum import IntEnum
+from config import Settings
 
-# Load environment variables from .env file
-load_dotenv()
-
+settings = Settings()
 
 class TaskStatus(IntEnum):
     """
