@@ -57,7 +57,7 @@ class AnalysisEngine:
                 db_port=settings.db_port,
             ),
         )
-        self.minio_client = MinIOClient(token)
+        self.minio_client = MinIOClient(token, settings.minio_sts_endpoint, settings.minio_endpoint)
         self.query_builder = QueryBuilder()
         self.aggregated_data = {}  # Centralized dict to store all aggregated data
 
