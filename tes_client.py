@@ -283,7 +283,7 @@ class TESClient:
         output_bucket: str,
         name: str = "Analysis Submission Test",
         description: str = "Federated analysis task",
-        tres: list = ["Nottingham"],
+        tres: list[str] | None = ["Nottingham"],
         output_path: str = "/outputs",
         image: str | None = None,
         db_config: dict | None = None,

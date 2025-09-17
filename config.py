@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     minio_endpoint: str
     minio_output_bucket: str
 
+    # Optional configuration
+    tre_fx_tres: list[str] | None = None
+
 
 class DbConfig(BaseModel):
     db_host: AnyUrl
