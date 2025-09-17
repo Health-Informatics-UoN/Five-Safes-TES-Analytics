@@ -1,6 +1,6 @@
-from tes_client import get_status_description
+from tes_client import TaskStatus
 import time
-from typing import List, Optional, Tuple, Any
+from typing import List
 
 
 class Polling:
@@ -22,7 +22,7 @@ class Polling:
         while self.poll_task:
             task_info = self.tes_client.get_task_status(self.task_id)
             status = task_info["status"]
-            status_description = get_status_description(status)
+            status_description = TaskStatus.get_status_description(status)
             print(f"Task status: {status} - {status_description}")
             ## check for completed, failed, running, or cancelled statuses - i.e., job is done
             if status in self.end_statuses:
@@ -75,7 +75,7 @@ class Polling:
         n_results: int = 1,
         polling_interval: int = 10,
     ) -> List[str]:
-        status, status_description = self.poll_task_status(polling_interval)
+        status, _ = self.poll_task_status(polling_interval)
         if status in self.result_statuses:
             ## how many results are we looking for? We're only going to check once, but get all that's available
 
