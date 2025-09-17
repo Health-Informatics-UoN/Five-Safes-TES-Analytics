@@ -1,207 +1,140 @@
 import json
-from pydantic import AnyHttpUrl, AnyUrl
+from pydantic import AnyUrl
 import requests
 from typing import Dict, Any
 from pathlib import Path
 from urllib.parse import urlparse
-from enum import IntEnum
+from enum import Enum
 from config import DbConfig
 
 
-class TaskStatus(IntEnum):
+class TaskStatus(int, Enum):
     """
     Enum for task status codes with their corresponding display names.
     source: https://github.com/SwanseaUniversityMedical/DARE-Control/blob/main/src/BL/Models/Enums/Enums.cs
     """
+    def __new__(cls, value, phrase):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+
+        obj.phrase = phrase
+        return obj
 
     # Parent only
-    WAITING_FOR_CHILD_SUBS_TO_COMPLETE = 0
+    WAITING_FOR_CHILD_SUBS_TO_COMPLETE = 0, "Waiting for Child Submissions To Complete"
     # Stage 1
-    WAITING_FOR_AGENT_TO_TRANSFER = 1
+    WAITING_FOR_AGENT_TO_TRANSFER = 1, "Waiting for Agent To Transfer"
     # Stage 2
-    TRANSFERRED_TO_POD = 2
+    TRANSFERRED_TO_POD = 2, "Transferred To Pod"
     # Stage 3
-    POD_PROCESSING = 3
+    POD_PROCESSING = 3, "Pod Processing"
     # Stage 3 - Green
-    POD_PROCESSING_COMPLETE = 4
+    POD_PROCESSING_COMPLETE = 4, "Pod Processing Complete"
     # Stage 4
-    DATA_OUT_APPROVAL_BEGUN = 5
+    DATA_OUT_APPROVAL_BEGUN = 5, "Data Out Approval Begun"
     # Stage 4 - Red
-    DATA_OUT_APPROVAL_REJECTED = 6
+    DATA_OUT_APPROVAL_REJECTED = 6, "Data Out Rejected"
     # Stage 4 - Green
-    DATA_OUT_APPROVED = 7
+    DATA_OUT_APPROVED = 7, "Data Out Approved"
     # Stage 1 - Red
-    USER_NOT_ON_PROJECT = 8
+    USER_NOT_ON_PROJECT = 8, "User Not On Project"
     # Stage 2 - Red
-    INVALID_USER = 9
+    INVALID_USER = 9, "User not authorised for project on TRE"
     # Stage 2 - Red
-    TRE_NOT_AUTHORISED_FOR_PROJECT = 10
+    TRE_NOT_AUTHORISED_FOR_PROJECT = 10, "TRE Not Authorised For Project"
     # Stage 5 - Green (completed enum)
-    COMPLETED = 11
+    COMPLETED = 11, "Completed"
     # Stage 1 - Red
-    INVALID_SUBMISSION = 12
+    INVALID_SUBMISSION = 12, "Invalid Submission"
     # Stage 1 - Red
-    CANCELLING_CHILDREN = 13
+    CANCELLING_CHILDREN = 13, "Cancelling Children"
     # Stage 1 - Red
-    REQUEST_CANCELLATION = 14
+    REQUEST_CANCELLATION = 14, "Request Cancellation"
     # Stage 1 - Red
-    CANCELLATION_REQUEST_SENT = 15
+    CANCELLATION_REQUEST_SENT = 15, "Cancellation Request Sent"
     # Stage 5 - Red
-    CANCELLED = 16
+    CANCELLED = 16, "Cancelled"
     # Stage 1
-    SUBMISSION_WAITING_FOR_CRATE_FORMAT_CHECK = 17
+    SUBMISSION_WAITING_FOR_CRATE_FORMAT_CHECK = 17, "Waiting for Crate Format Check"
     # Unused
-    VALIDATING_USER = 18
+    VALIDATING_USER = 18, "Validating User"
     # Unused
-    VALIDATING_SUBMISSION = 19
+    VALIDATING_SUBMISSION = 19, "Validating Submission"
     # Unused - Green
-    VALIDATION_SUCCESSFUL = 20
+    VALIDATION_SUCCESSFUL = 20, "Validation Successful"
     # Stage 2
-    AGENT_TRANSFERRING_TO_POD = 21
+    AGENT_TRANSFERRING_TO_POD = 21, "Agent Transferring To Pod"
     # Stage 2 - Red
-    TRANSFER_TO_POD_FAILED = 22
+    TRANSFER_TO_POD_FAILED = 22, "Transfer To Pod Failed"
     # Unused
-    TRE_REJECTED_PROJECT = 23
+    TRE_REJECTED_PROJECT = 23, "TRE Rejected Project"
     # Unused
-    TRE_APPROVED_PROJECT = 24
+    TRE_APPROVED_PROJECT = 24, "TRE Approved Project"
     # Stage 3 - Red
-    POD_PROCESSING_FAILED = 25
+    POD_PROCESSING_FAILED = 25, "Pod Processing Failed"
     # Stage 1 - Parent only
-    RUNNING = 26
+    RUNNING = 26, "Running"
     # Stage 5 - Red
-    FAILED = 27
+    FAILED = 27, "Failed"
     # Stage 2
-    SENDING_SUBMISSION_TO_HUTCH = 28
+    SENDING_SUBMISSION_TO_HUTCH = 28, "Sending submission to Hutch"
     # Stage 4
-    REQUESTING_HUTCH_DOES_FINAL_PACKAGING = 29
+    REQUESTING_HUTCH_DOES_FINAL_PACKAGING = 29, "Requesting Hutch packages up final output"
     # Stage 3
-    WAITING_FOR_CRATE = 30
+    WAITING_FOR_CRATE = 30, "Waiting for a Crate"
     # Stage 3
-    FETCHING_CRATE = 31
+    FETCHING_CRATE = 31, "Fetching Crate"
     # Stage 3
-    QUEUED = 32
+    QUEUED = 32, "Crate queued"
     # Stage 3
-    VALIDATING_CRATE = 33
+    VALIDATING_CRATE = 33, "Validating Crate"
     # Stage 3
-    FETCHING_WORKFLOW = 34
+    FETCHING_WORKFLOW = 34, "Fetching workflow"
     # Stage 3
-    STAGING_WORKFLOW = 35
+    STAGING_WORKFLOW = 35, "Preparing workflow"
     # Stage 3
-    EXECUTING_WORKFLOW = 36
+    EXECUTING_WORKFLOW = 36, "Executing workflow"
     # Stage 3
-    PREPARING_OUTPUTS = 37
+    PREPARING_OUTPUTS = 37, "Preparing outputs"
     # Stage 3
-    DATA_OUT_REQUESTED = 38
+    DATA_OUT_REQUESTED = 38, "Requested Egress"
     # Stage 3
-    TRANSFERRED_FOR_DATA_OUT = 39
+    TRANSFERRED_FOR_DATA_OUT = 39, "Waiting for Egress results"
     # Stage 3
-    PACKAGING_APPROVED_RESULTS = 40
+    PACKAGING_APPROVED_RESULTS = 40, "Finalising approved results"
     # Stage 3 - Green
-    COMPLETE = 41
+    COMPLETE = 41, "Completed"
     # Stage 3 - Red
-    FAILURE = 42
+    FAILURE = 42, "Failed"
     # Stage 1
-    SUBMISSION_RECEIVED = 43
+    SUBMISSION_RECEIVED = 43, "Submission has been received"
     # Stage 1 - Green
-    SUBMISSION_CRATE_VALIDATED = 44
+    SUBMISSION_CRATE_VALIDATED = 44, "Crate Validated"
     # Stage 1 - Red
-    SUBMISSION_CRATE_VALIDATION_FAILED = 45
+    SUBMISSION_CRATE_VALIDATION_FAILED = 45, "Crate Failed Validation"
     # Stage 2 - Green
-    TRE_CRATE_VALIDATED = 46
+    TRE_CRATE_VALIDATED = 46, "Crate Validated"
     # Stage 2 - Red
-    TRE_CRATE_VALIDATION_FAILED = 47
+    TRE_CRATE_VALIDATION_FAILED = 47, "Crate Failed Validation"
     # Stage 2
-    TRE_WAITING_FOR_CRATE_FORMAT_CHECK = 48
+    TRE_WAITING_FOR_CRATE_FORMAT_CHECK = 48, "Waiting for Crate Format Check"
     # Stage 5 - Green - Parent Only
-    PARTIAL_RESULT = 49
+    PARTIAL_RESULT = 49, "Complete but not all TREs returned a result"
 
+    @classmethod
+    def get_status_description(cls, status_code: int):
+        for status in cls:
+            if status._value_ == status_code:
+                return status.phrase
+        raise ValueError(f"Unknown Status ({status_code})")
 
-# Status lookup dictionary for easy access to display names
-TASK_STATUS_DESCRIPTIONS = {
-    TaskStatus.WAITING_FOR_CHILD_SUBS_TO_COMPLETE: "Waiting for Child Submissions To Complete",
-    TaskStatus.WAITING_FOR_AGENT_TO_TRANSFER: "Waiting for Agent To Transfer",
-    TaskStatus.TRANSFERRED_TO_POD: "Transferred To Pod",
-    TaskStatus.POD_PROCESSING: "Pod Processing",
-    TaskStatus.POD_PROCESSING_COMPLETE: "Pod Processing Complete",
-    TaskStatus.DATA_OUT_APPROVAL_BEGUN: "Data Out Approval Begun",
-    TaskStatus.DATA_OUT_APPROVAL_REJECTED: "Data Out Rejected",
-    TaskStatus.DATA_OUT_APPROVED: "Data Out Approved",
-    TaskStatus.USER_NOT_ON_PROJECT: "User Not On Project",
-    TaskStatus.INVALID_USER: "User not authorised for project on TRE",
-    TaskStatus.TRE_NOT_AUTHORISED_FOR_PROJECT: "TRE Not Authorised For Project",
-    TaskStatus.COMPLETED: "Completed",
-    TaskStatus.INVALID_SUBMISSION: "Invalid Submission",
-    TaskStatus.CANCELLING_CHILDREN: "Cancelling Children",
-    TaskStatus.REQUEST_CANCELLATION: "Request Cancellation",
-    TaskStatus.CANCELLATION_REQUEST_SENT: "Cancellation Request Sent",
-    TaskStatus.CANCELLED: "Cancelled",
-    TaskStatus.SUBMISSION_WAITING_FOR_CRATE_FORMAT_CHECK: "Waiting For Crate Format Check",
-    TaskStatus.VALIDATING_USER: "Validating User",
-    TaskStatus.VALIDATING_SUBMISSION: "Validating Submission",
-    TaskStatus.VALIDATION_SUCCESSFUL: "Validation Successful",
-    TaskStatus.AGENT_TRANSFERRING_TO_POD: "Agent Transferring To Pod",
-    TaskStatus.TRANSFER_TO_POD_FAILED: "Transfer To Pod Failed",
-    TaskStatus.TRE_REJECTED_PROJECT: "Tre Rejected Project",
-    TaskStatus.TRE_APPROVED_PROJECT: "Tre Approved Project",
-    TaskStatus.POD_PROCESSING_FAILED: "Pod Processing Failed",
-    TaskStatus.RUNNING: "Running",
-    TaskStatus.FAILED: "Failed",
-    TaskStatus.SENDING_SUBMISSION_TO_HUTCH: "Sending submission to Hutch",
-    TaskStatus.REQUESTING_HUTCH_DOES_FINAL_PACKAGING: "Requesting Hutch packages up final output",
-    TaskStatus.WAITING_FOR_CRATE: "Waiting for a Crate",
-    TaskStatus.FETCHING_CRATE: "Fetching Crate",
-    TaskStatus.QUEUED: "Crate queued",
-    TaskStatus.VALIDATING_CRATE: "Validating Crate",
-    TaskStatus.FETCHING_WORKFLOW: "Fetching workflow",
-    TaskStatus.STAGING_WORKFLOW: "Preparing workflow",
-    TaskStatus.EXECUTING_WORKFLOW: "Executing workflow",
-    TaskStatus.PREPARING_OUTPUTS: "Preparing outputs",
-    TaskStatus.DATA_OUT_REQUESTED: "Requested Egress",
-    TaskStatus.TRANSFERRED_FOR_DATA_OUT: "Waiting for Egress results",
-    TaskStatus.PACKAGING_APPROVED_RESULTS: "Finalising approved results",
-    TaskStatus.COMPLETE: "Completed",
-    TaskStatus.FAILURE: "Failed",
-    TaskStatus.SUBMISSION_RECEIVED: "Submission has been received",
-    TaskStatus.SUBMISSION_CRATE_VALIDATED: "Crate Validated",
-    TaskStatus.SUBMISSION_CRATE_VALIDATION_FAILED: "Crate Failed Validation",
-    TaskStatus.TRE_CRATE_VALIDATED: "Crate Validated",
-    TaskStatus.TRE_CRATE_VALIDATION_FAILED: "Crate Failed Validation",
-    TaskStatus.TRE_WAITING_FOR_CRATE_FORMAT_CHECK: "Waiting For Crate Format Check",
-    TaskStatus.PARTIAL_RESULT: "Complete but not all TREs returned a result",
-}
-
-
-def get_status_description(status_code: int) -> str:
-    """
-    Get the display description for a given status code.
-
-    Args:
-        status_code (int): The numeric status code
-
-    Returns:
-        str: The display description for the status code, or "Unknown Status" if not found
-    """
-    try:
-        return TASK_STATUS_DESCRIPTIONS[TaskStatus(status_code)]
-    except (ValueError, KeyError):
-        return f"Unknown Status ({status_code})"
-
-
-def get_status_code(description: str) -> int:
-    """
-    Get the status code for a given display description.
-
-    Args:
-        description (str): The display description
-
-    Returns:
-        int: The status code, or -1 if not found
-    """
-    for code, desc in TASK_STATUS_DESCRIPTIONS.items():
-        if desc.lower() == description.lower():
-            return code.value
-    return -1
-
+    @classmethod
+    def get_status_code(cls, description: str):
+        description = description.lower()
+        for status in cls:
+            if status.phrase.lower() == description:
+                return status._value_
+        raise ValueError(f"No status matching {description}")
 
 class TESClient:
     """
