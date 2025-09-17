@@ -1,15 +1,9 @@
-import os
 import time
 import requests
 from typing import Dict, List, Optional
 import minio
-from dotenv import load_dotenv
 from minio import Minio
 import xml.etree.ElementTree as ET
-
-# Load environment variables from .env file
-load_dotenv()
-
 
 class TokenExpiredError(Exception):
     """Exception raised when the provided token has expired."""
@@ -22,7 +16,7 @@ class MinIOClient:
     Handles MinIO operations including token exchange and object retrieval.
     """
 
-    def __init__(self, token: str, sts_endpoint: str, minio_endpoint: str = None):
+    def __init__(self, token: str, sts_endpoint: str, minio_endpoint: str):
         """
         Initialize the MinIO client.
 
@@ -33,13 +27,9 @@ class MinIOClient:
         """
         self.token = token
         # Use environment variables - required
-        self.sts_endpoint = sts_endpoint or os.getenv("MINIO_STS_ENDPOINT")
-        if not self.sts_endpoint:
-            raise ValueError("MINIO_STS_ENDPOINT environment variable is required")
+        self.sts_endpoint = sts_endpoint
 
-        self.minio_endpoint = minio_endpoint or os.getenv("MINIO_ENDPOINT")
-        if not self.minio_endpoint:
-            raise ValueError("MINIO_ENDPOINT environment variable is required")
+        self.minio_endpoint = minio_endpoint
 
         self._client = None
         self._credentials = None
