@@ -314,7 +314,7 @@ class TESClient:
 
         # If a TES task is provided, use its executor configuration
         if query is None:
-            query = f"SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 3037532"
+            query = "SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 3037532"
 
         executors = [
             {
