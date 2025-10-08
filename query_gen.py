@@ -1,7 +1,7 @@
 ## This is a sample query to get some measurement data to do some analysis on, for a given concept id
 usr_qry = """WITH user_query AS (
   SELECT value_as_number FROM public.measurement 
-  WHERE measurement_concept_id = 3037532
+  WHERE measurement_concept_id = 21490742
   AND value_as_number IS NOT NULL
 )"""
 
@@ -10,7 +10,7 @@ usr_qry = """WITH user_query AS (
 usr_qry_2 = """WITH x_values AS (
   SELECT person_id, measurement_date, value_as_number AS x
   FROM public.measurement
-  WHERE measurement_concept_id = 3037532
+  WHERE measurement_concept_id = 21490742
     AND value_as_number IS NOT NULL
 ),
 y_values AS (

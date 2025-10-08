@@ -9,7 +9,7 @@ from analysis_engine import AnalysisEngine
 engine = AnalysisEngine(token="your_token", project="YourProject")
 
 # Run analysis
-result = engine.run_mean_analysis(concept_id=3037532, tres=["Nottingham"])
+result = engine.run_mean_analysis(concept_id=21490742, tres=["Nottingham"])
 print(f"Result: {result['result']}")
 ```
 
@@ -211,7 +211,7 @@ Force refresh of credentials.
 from analysis_engine import AnalysisEngine
 
 engine = AnalysisEngine("your_token")
-result = engine.run_mean_analysis(3037532, ["Nottingham"])
+result = engine.run_mean_analysis(21490742, ["Nottingham"])
 print(f"Mean: {result['result']}")
 ```
 
@@ -221,7 +221,7 @@ from query_builder import QueryBuilder
 from analysis_engine import AnalysisEngine
 
 qb = QueryBuilder()
-custom_query = qb.build_summary_stats_query(concept_id=3037532)
+custom_query = qb.build_summary_stats_query(concept_id=21490742)
 
 engine = AnalysisEngine("your_token")
 result = engine.run_analysis(

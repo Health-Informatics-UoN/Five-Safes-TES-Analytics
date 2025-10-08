@@ -63,7 +63,7 @@ engine = AnalysisEngine("your_token", project="YourProject")
 # Define your own SQL query
 custom_query = """WITH user_query AS (
   SELECT value_as_number FROM public.measurement 
-  WHERE measurement_concept_id = 3037532
+  WHERE measurement_concept_id = 21490742
   AND value_as_number IS NOT NULL
 )
 SELECT
