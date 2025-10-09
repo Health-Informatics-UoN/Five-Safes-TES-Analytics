@@ -46,7 +46,7 @@ def test_poll_minio_results(mocker, n_results):
     
     #set up mock response from minio client
     mock_minio_client = mocker.Mock()
-    mock_minio_client.get_object.return_value = "test_data"
+    mock_minio_client.get_object_smart.return_value = "test_data"
 
     #create polling engine with a sample task id of 1
     polling_engine = polling.Polling(mock_tes_client, mock_minio_client, '1')

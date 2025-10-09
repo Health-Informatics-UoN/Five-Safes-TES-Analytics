@@ -3,16 +3,6 @@ from sqlalchemy import create_engine, text
 from tdigest import TDigest
 import math
 
-def get_local_processing_registry():
-    registry = {}
-    for cls in BaseLocalProcessing.__subclasses__():
-        if hasattr(cls, "analysis_type"):
-            registry[cls.analysis_type] = cls
-    return registry
-
-LOCAL_PROCESSING_CLASSES = get_local_processing_registry()
-    
-
 class BaseLocalProcessing(ABC):
     def __init__(self, analysis_type: str = None, user_query: str = None, engine = None):
         self.analysis_type = analysis_type
@@ -31,11 +21,7 @@ class BaseLocalProcessing(ABC):
         """SQL fragment for the processing step."""
         pass
 
-    @property
-    @abstractmethod
-    def expected_columns(self):
-        """List of expected columns in the result."""
-        pass
+
 
     @property
     @abstractmethod
@@ -68,8 +54,6 @@ class BaseLocalProcessing(ABC):
 
 class Mean(BaseLocalProcessing):
     analysis_type = "mean"
-    def __init__(self, user_query=None):
-        super().__init__(analysis_type=self.analysis_type, user_query=user_query)
 
     @property
     def description(self):
@@ -83,9 +67,7 @@ SELECT
   SUM(value_as_number) AS total
 FROM user_query;"""
 
-    @property
-    def expected_columns(self):
-        return ["n", "total"]
+
 
     @property
     def user_query_requirements(self):
@@ -93,8 +75,6 @@ FROM user_query;"""
 
 class Variance(BaseLocalProcessing):
     analysis_type = "variance"
-    def __init__(self, user_query=None):
-        super().__init__(analysis_type=self.analysis_type, user_query=user_query)
 
     @property
     def description(self):
@@ -109,9 +89,7 @@ SELECT
   SUM(value_as_number) AS total
 FROM user_query;"""
 
-    @property
-    def expected_columns(self):
-        return ["n", "sum_x2", "total"]
+
 
     @property
     def user_query_requirements(self):
@@ -119,8 +97,6 @@ FROM user_query;"""
 
 class PMCC(BaseLocalProcessing):
     analysis_type = "PMCC"
-    def __init__(self, user_query=None):
-        super().__init__(analysis_type=self.analysis_type, user_query=user_query)
 
     @property
     def description(self):
@@ -138,9 +114,7 @@ SELECT
   SUM(x * y) AS sum_xy
 FROM user_query;"""
 
-    @property
-    def expected_columns(self):
-        return ["n", "sum_x", "sum_y", "sum_x2", "sum_y2", "sum_xy"]
+
 
     @property
     def user_query_requirements(self):
@@ -149,8 +123,6 @@ FROM user_query;"""
 
 class ContingencyTable(BaseLocalProcessing):
     analysis_type = "contingency_table"
-    def __init__(self, user_query=None, engine=None):
-        super().__init__(analysis_type=self.analysis_type, user_query=user_query, engine = engine)
 
     @property
     def description(self):
@@ -182,9 +154,7 @@ GROUP BY {group_by}
 ORDER BY {group_by};"""
         return query
 
-    @property
-    def expected_columns(self):
-        return self.get_columns_from_user_query() + ["n"]
+
 
     @property
     def user_query_requirements(self):
@@ -193,8 +163,6 @@ ORDER BY {group_by};"""
 class PercentileSketch(BaseLocalProcessing):
     analysis_type = "percentile_sketch" ## might be better to call it something to do with digests, or the specific percentile sketch algorithm.
     ## see here: https://github.com/CamDavidsonPilon/tdigest
-    def __init__(self, user_query=None, engine=None):
-        super().__init__(analysis_type=self.analysis_type, user_query=user_query, engine=engine)
         
     @property
     def description(self):
@@ -204,9 +172,7 @@ class PercentileSketch(BaseLocalProcessing):
     def processing_query(self):
         return None
     
-    @property
-    def expected_columns(self):
-        return None
+
     
     @property
     def user_query_requirements(self):
@@ -219,4 +185,14 @@ class PercentileSketch(BaseLocalProcessing):
             if row[0] is not None and not math.isnan(row[0]):
                 tdigest.update(row[0])
         return tdigest.to_json()
+
+
+def get_local_processing_registry():
+    registry = {}
+    for cls in BaseLocalProcessing.__subclasses__():
+        if hasattr(cls, "analysis_type"):
+            registry[cls.analysis_type] = cls
+    return registry
+
+LOCAL_PROCESSING_CLASSES = get_local_processing_registry()
 

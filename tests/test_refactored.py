@@ -161,19 +161,19 @@ class TestDataProcessor:
         """Test data aggregation for PMCC analysis."""
         csv_data = "n,sum_x,sum_y,sum_xy,sum_x2,sum_y2\n5,10,20,50,30,80\n"
         data = [csv_data]
-        result = processor.aggregate_data(data, "PMCC")
+        result = processor.aggregate_data(data, "pmcc")
         
         assert isinstance(result, np.ndarray)
         assert result[0][0] == 5  # n
         assert result[0][1] == 10  # sum_x
         assert result[0][2] == 20  # sum_y
     
-    def test_aggregate_data_chi_squared(self, processor):
+    def test_aggregate_data_contingency_table(self, processor):
         """Test data aggregation for chi-squared analysis."""
         # Use numerical data that can be parsed as integers
         csv_data = "10,15,25\n20,25,45\n"  # Simple contingency table data
         data = [csv_data]
-        result = processor.aggregate_data(data, "chi_squared_scipy")
+        result = processor.aggregate_data(data, "contingencytable")
         
         # Should return a contingency table
         assert isinstance(result, np.ndarray)
@@ -211,7 +211,7 @@ class TestStatisticalAnalyzer:
         # Use data that won't cause division by zero
         # n=3, sum_x=6, sum_y=9, sum_xy=20, sum_x2=14, sum_y2=29
         data = np.array([[3, 6, 9, 20, 14, 29]])
-        result = analyzer.analyze_data(data, "PMCC")
+        result = analyzer.analyze_data(data, "pmcc")
         
         # This is a complex calculation, so we just check it's a float
         assert isinstance(result, float)
@@ -239,9 +239,9 @@ class TestStatisticalAnalyzer:
         
         assert "mean" in types
         assert "variance" in types
-        assert "PMCC" in types
-        assert "chi_squared_scipy" in types
-        assert "chi_squared_manual" in types
+        assert "pmcc" in types
+        assert "contingencytable" in types
+        assert "percentilesketch" in types
 
 
 class TestAnalysisEngine:

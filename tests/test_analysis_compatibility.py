@@ -81,7 +81,7 @@ class TestAnalysisCompatibility:
     @patch('analysis_engine.TESClient')
     @patch('analysis_engine.MinIOClient')
     def test_compatible_analysis_on_same_data(self, mock_minio, mock_tes, engine):
-        """Test running compatible analyses on the same data (e.g., chi-squared variants)."""
+        """Test running compatible analyses on the same data (e.g., variance and mean)."""
         # Mock TES client
         mock_tes_instance = Mock()
         mock_tes_instance.generate_submission_template.return_value = ({"task": "data"}, 2)
@@ -90,55 +90,72 @@ class TestAnalysisCompatibility:
         mock_tes_instance.get_task_status.return_value = {"status": 11, "description": "Completed"}
         mock_tes.return_value = mock_tes_instance
         
-        # Mock MinIO client
+        # Mock MinIO client to return variance analysis results
         mock_minio_instance = Mock()
-        mock_minio_instance.get_object.return_value = "gender_name,race_name,n\nFEMALE,Asian Indian,10\nMALE,Asian Indian,15\n"
+        # Mock variance results from Docker containers
+        variance_results = [
+            '{"n": 100, "sum_x2": 8500.25, "total": 500.5}',
+            '{"n": 75, "sum_x2": 4000.50, "total": 250.0}',
+            '{"n": 125, "sum_x2": 9500.00, "total": 600.0}'
+        ]
+        # Use side_effect to return different results for each call
+        # This simulates the polling system calling get_object_smart multiple times
+        # to collect results from different TREs sequentially
+        mock_minio_instance.get_object_smart.side_effect = lambda bucket, path: variance_results.pop(0) if variance_results else None
         mock_minio.return_value = mock_minio_instance
         
         # Create engine after setting up mocks
         engine = AnalysisEngine("test_token", "test_project")
         
-        # Mock data processor to return raw data that will be processed by analysis class
-        raw_data = ["gender_name,race_name,n\nFEMALE,Asian Indian,10\nMALE,Asian Indian,15\n"]
-        engine.data_processor.aggregate_data = Mock(return_value=raw_data)
+        # Mock data processor to return aggregated variance data
+        aggregated_variance_data = {
+            "n": [100, 75, 125],
+            "sum_x2": [8500.25, 4000.50, 9500.00],
+            "total": [500.5, 250.0, 600.0]
+        }
+        engine.data_processor.aggregate_data = Mock(return_value=aggregated_variance_data)
         
-        # Mock the statistical analyzer to simulate the analysis class storing data
+        # Mock the statistical analyzer to simulate variance analysis
         def mock_analyze_data(input_data, analysis_type):
-            # Simulate what the ChiSquaredScipyAnalysis class would do
-            if analysis_type == "chi_squared_scipy":
-                # Simulate the analysis class storing aggregated data
-                contingency_table = np.array([[10, 15], [20, 25]])
-                engine.statistical_analyzer.analysis_classes["chi_squared_scipy"].aggregated_data = {"contingency_table": contingency_table}
-                return 2.5  # chi-squared result
+            if analysis_type == "variance":
+                # Simulate variance analysis storing aggregated data
+                engine.statistical_analyzer.analysis_classes["variance"].aggregated_data = {
+                    "n": 300,  # 100 + 75 + 125
+                    "sum_x2": 22000.75,  # 8500.25 + 4000.50 + 9500.00
+                    "total": 1350.5  # 500.5 + 250.0 + 600.0
+                }
+                return 15.25  # variance result
             else:
                 raise Exception("Incompatible analysis")
         
         engine.statistical_analyzer.analyze_data = Mock(side_effect=mock_analyze_data)
         
-        # Run chi-squared scipy analysis first
-        user_query = "SELECT gender_name, race_name FROM person"
+        # Run variance analysis first
+        user_query = "SELECT value_as_number FROM public.measurement WHERE measurement_concept_id = 3037532"
         result1 = engine.run_analysis(
-            "chi_squared_scipy",
+            "variance",
             user_query,
-            ["TRE1", "TRE2"]
+            ["TRE1", "TRE2", "TRE3"]
         )
         
-        # Check that aggregated_data is stored as a dict (contingency table)
+        # Check that aggregated_data is stored with variance results
         assert engine.aggregated_data is not None
         assert isinstance(engine.aggregated_data, dict)
-        assert "contingency_table" in engine.aggregated_data
+        assert "n" in engine.aggregated_data
+        assert "sum_x2" in engine.aggregated_data
+        assert "total" in engine.aggregated_data
         
-        # Now run chi-squared manual analysis on the same data
+        # Now run mean analysis on the same data (compatible analysis)
         from statistical_analyzer import StatisticalAnalyzer
         real_analyzer = StatisticalAnalyzer()
-        # Pass the contingency table dict to the real analyzer
-        result2 = real_analyzer.analyze_data(engine.aggregated_data["contingency_table"], "chi_squared_manual")
+        # The mean analysis can use the same aggregated data since it has 'n' and 'total'
+        result2 = real_analyzer.analyze_data(engine.aggregated_data, "mean")
         
-        # Should return a dictionary with chi-squared results
-        assert isinstance(result2, dict)
-        assert "chi_squared" in result2
-        assert "p_value" in result2
-    
+        # Verify the mean calculation
+        expected_mean = 1350.5 / 300  # total / n
+        assert result2 == expected_mean
+        
+        
     def test_data_format_validation(self, engine):
         """Test that data format validation works correctly."""
         # Test mean data format
@@ -157,33 +174,8 @@ class TestAnalysisCompatibility:
         contingency_data = np.array([[10, 15], [20, 25]])  # 2x2 table
         assert contingency_data.shape == (2, 2)  # Should be 2D
     
-    def test_analysis_requirements_compatibility(self, engine):
-        """Test that analysis requirements are properly documented for compatibility."""
-        requirements = engine.get_analysis_requirements("mean")
-        assert "expected_columns" in requirements
-        assert requirements["expected_columns"] == ["n", "total"]
-        
-        requirements = engine.get_analysis_requirements("variance")
-        assert "expected_columns" in requirements
-        assert requirements["expected_columns"] == ["n", "sum_x2", "total"]
-        
-        requirements = engine.get_analysis_requirements("chi_squared_scipy")
-        assert "expected_columns" in requirements
-        assert requirements["expected_columns"] == ["contingency_table"]
 
-    def test_chi_squared_2x3_table(self, engine):
-        """Test chi-squared analysis with a 2x3 contingency table."""
-        from statistical_analyzer import StatisticalAnalyzer
-        analyzer = StatisticalAnalyzer()
-        contingency_table = np.array([[10, 15, 5], [20, 25, 10]])
-        # Scipy implementation
-        result = analyzer.analyze_data(contingency_table, "chi_squared_scipy")
-        assert isinstance(result, float)
-        # Manual implementation
-        result_manual = analyzer.analyze_data(contingency_table, "chi_squared_manual")
-        assert isinstance(result_manual, dict)
-        assert "chi_squared" in result_manual
-        assert "p_value" in result_manual
+
 
     def test_dictionary_based_analysis(self, engine):
         """

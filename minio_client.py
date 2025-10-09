@@ -2,7 +2,7 @@ import os
 import time
 import requests
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union, Any
 import minio
 from dotenv import load_dotenv
 from minio import Minio
@@ -186,6 +186,25 @@ class MinIOClient:
         
         return None
     
+    def combine_data(self, data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Combine data from multiple sources.
+        
+        Args:
+            data (List[Dict[str, Any]]): List of dictionaries containing data from multiple sources
+            
+        Returns:
+            Dict[str, Any]: Combined data as a dictionary
+        """
+        combined_data = {}
+        for item in data:
+            if isinstance(item, dict):
+                for key, value in item.items():
+                    if key not in combined_data:
+                        combined_data[key] = []
+                    combined_data[key].append(value)
+        return combined_data
+
     def list_objects(self, bucket: str, prefix: str = "") -> List[str]:
         """
         List objects in a bucket.
@@ -317,5 +336,57 @@ class MinIOClient:
         
         print(f"Timeout waiting for object {object_path}")
         return None
+
+    def get_object_as_json(self, bucket: str, object_path: str) -> Optional[Dict]:
+        """
+        Get object content from MinIO and parse it as JSON.
+        
+        Args:
+            bucket (str): Name of the MinIO bucket
+            object_path (str): Path to the object within the bucket
+            
+        Returns:
+            Optional[Dict]: Parsed JSON object, or None if not found or not JSON
+        """
+        content = self.get_object(bucket, object_path)
+        if content is None:
+            return None
+            
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            print(f"Failed to decode JSON from object {object_path} in bucket {bucket}")
+            return None
+
+    def get_object_smart(self, bucket: str, object_path: str) -> Optional[Union[str, Dict]]:
+        """
+        Get object content from MinIO and automatically detect format.
+        
+        Args:
+            bucket (str): Name of the MinIO bucket
+            object_path (str): Path to the object within the bucket
+            
+        Returns:
+            Optional[Union[str, Dict]]: Parsed JSON object or string content, or None if not found
+        """
+        content = self.get_object(bucket, object_path)
+        if content is None:
+            return None
+            
+        # Try JSON first
+        try:
+            json_data = json.loads(content)
+            return self.combine_data(json_data)
+        except json.JSONDecodeError:
+            # Try CSV parsing
+            try:
+                import csv
+                from io import StringIO
+                reader = csv.DictReader(StringIO(content))
+                data = next(reader)
+                return data
+            except:
+                # Fall back to raw string
+                return content
 
 

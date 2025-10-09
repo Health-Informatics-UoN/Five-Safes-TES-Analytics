@@ -9,7 +9,6 @@ from statistical_analyzer import StatisticalAnalyzer
 from tes_client import TESClient
 from tes_client import get_status_description
 from minio_client import MinIOClient
-from query_builder import QueryBuilder
 import tes
 import polling
 
@@ -47,7 +46,6 @@ class AnalysisEngine:
         self.statistical_analyzer = StatisticalAnalyzer()
         self.tes_client = TESClient()
         self.minio_client = MinIOClient(token)
-        self.query_builder = QueryBuilder()
         self.aggregated_data = {}  # Centralized dict to store all aggregated data
         
     def run_analysis(self, 
@@ -98,18 +96,13 @@ class AnalysisEngine:
         
         # Original logic for running analysis on new data
         try:
-            # Build the complete query by combining user query with analysis calculations
-            complete_query = self.query_builder.build_query(analysis_type, user_query)
-            
-            # Validate the complete query
-            if not self.query_builder.validate_query(complete_query):
-                raise ValueError("Invalid SQL query generated")
             
             # Generate and submit TES task
             print(f"Submitting {analysis_type} analysis to {len(tres)} TREs...")
             submission_task, n_results = self.tes_client.generate_submission_template(
                 name=task_name,
-                query=complete_query,
+                query=user_query,
+                analysis_type=analysis_type,
                 tres=tres,
                 project=self.project
             )
@@ -122,23 +115,10 @@ class AnalysisEngine:
             
 
 
-            #while True:
-            #    task_info = self.tes_client.get_task_status(task_id)
-            #    status = task_info['status']
-            #    status_description = get_status_description(status)
-            #    print(f"Task status: {status}")
-            #    print(status_description)
-            #    ## check for completed, failed, running, or cancelled statuses - i.e., job is done
-            #    if status in [11, 27, 16, 49]:
-            #        break
-
-            # Collect results from MinIO
-            #print("Collecting results from MinIO...")
-            # data = self._collect_results(results_paths, bucket, n_results)
-            
+           
             ## use polling engine to collect results
             polling_engine = polling.Polling(self.tes_client, self.minio_client, task_id)
-            data = polling_engine.poll_results(results_paths, bucket, n_results, polling_interval=10)
+            data = polling_engine.poll_results(results_paths, bucket, n_results, polling_interval=10) #could be a list of dict if json data
 
             # Process and analyze data
             print("Processing and analyzing data...")
@@ -155,7 +135,7 @@ class AnalysisEngine:
                 'task_id': task_id,
                 'tres_used': tres,
                 'data_sources': len(data),
-                'complete_query': complete_query
+                'complete_query': user_query
             }
             
         except Exception as e:
@@ -201,7 +181,7 @@ class AnalysisEngine:
         Returns:
             dict: Requirements including expected columns and format
         """
-        return self.query_builder.get_analysis_requirements(analysis_type)
+        return self.statistical_analyzer.get_analysis_config(analysis_type)
     
     def get_supported_analysis_types(self) -> List[str]:
         """
@@ -210,7 +190,7 @@ class AnalysisEngine:
         Returns:
             List[str]: List of supported analysis types
         """
-        return self.query_builder.get_supported_analysis_types()
+        return self.statistical_analyzer.get_supported_analysis_types()
 
     def run_additional_analysis(self, analysis_type: str) -> Union[float, Dict[str, Any]]:
         """
