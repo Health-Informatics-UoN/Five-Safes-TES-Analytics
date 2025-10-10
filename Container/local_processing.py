@@ -2,10 +2,12 @@ from abc import ABC, abstractmethod
 from sqlalchemy import create_engine, text
 from tdigest import TDigest
 import math
+import json
 
 class BaseLocalProcessing(ABC):
     def __init__(self, analysis_type: str = None, user_query: str = None, engine = None):
-        self.analysis_type = analysis_type
+        # Use class attribute as default if no analysis_type provided
+        self.analysis_type = analysis_type if analysis_type is not None else getattr(self.__class__, 'analysis_type', None)
         self.user_query = user_query
         self.engine = engine
 
@@ -33,11 +35,13 @@ class BaseLocalProcessing(ABC):
         """
         Build a complete SQL query by combining user's data selection with analysis calculations.
         """
-        if self.analysis_type is None or self.processing_query is None:
+        analysis_type = getattr(self.__class__, 'analysis_type', None)
+        
+        if self.processing_query is None:
             return self.user_query
         # Check if the analysis_type is supported
-        if self.analysis_type not in LOCAL_PROCESSING_CLASSES:
-            raise ValueError(f"Unsupported analysis type: {self.analysis_type}")
+        if analysis_type not in LOCAL_PROCESSING_CLASSES:
+            raise ValueError(f"Unsupported analysis type: {analysis_type}")
         # Combine user query with analysis part
         query = f"""WITH user_query AS (
 {self.user_query}
@@ -180,11 +184,11 @@ class PercentileSketch(BaseLocalProcessing):
 
     def python_analysis(self, sql_result):
         tdigest = TDigest()
-        for row in sql_result:
+        for row in sql_result.fetchall():
             ## need to filter out missing values, null or NaN. If it's missing, it should only be None, but it's technically possible for NaN to be returned.
             if row[0] is not None and not math.isnan(row[0]):
                 tdigest.update(row[0])
-        return tdigest.to_json()
+        return json.dumps(tdigest.to_dict())
 
 
 def get_local_processing_registry():

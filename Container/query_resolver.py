@@ -35,15 +35,8 @@ class DecimalEncoder(json.JSONEncoder):
 ### Using dedicated classes for local processing and aggregation.
 ### Each analysis type has its own processing class that handles SQL and Python analysis.
 
-@click.command()
-@click.option('--user-query', required=True, help='SQL query to execute')
-@click.option('--analysis', required=True, help='Type of analysis to perform')
-@click.option('--db-connection', default="postgresql://postgres:postgres@localhost:5432/omop", 
-                       help='Database connection string')
-@click.option('--output-filename', help='Output filename', default='data')
-@click.option('--output-format', type=click.Choice(['json', 'csv']), default='json',
-                       help='Output format (json or csv)')
-def main(user_query, analysis, db_connection, output_filename, output_format):
+def process_query(user_query, analysis, db_connection, output_filename, output_format):
+    """Internal function to process queries without Click decorators."""
     #################################################################################
     #### Setup
     try:    
@@ -85,16 +78,23 @@ def main(user_query, analysis, db_connection, output_filename, output_format):
             result = db_result
 
         if isinstance(result, engine.Result):
+            # Store the keys before calling fetchall
+            result_keys = result.keys()
             result = result.fetchall()
+        else:
+            result_keys = None
 
         ## convert to list of dictionaries, so it's easier to work with.
 
-        if result:
-            # For aggregations, we expect only one row
-            # Extract the single row values and convert to dict
-            row_values = result[0]  # This is the tuple of values
-            # Use the keys from the result to create the dict
-            result = dict(zip(result.keys(), row_values))
+        if result and result_keys:
+            # Convert list of tuples to list of dictionaries
+            if len(result) == 1:
+                # Single row - convert to single dict (for aggregations like mean, variance)
+                row_values = result[0]
+                result = dict(zip(result_keys, row_values))
+            else:
+                # Multiple rows - convert to list of dicts (for contingency tables, etc.)
+                result = [dict(zip(result_keys, row)) for row in result]
 
         ## decide to output as json to make it easier to work with, but could also output as csv, or just the result.
         ### Write json to string for debugging
@@ -124,6 +124,20 @@ def main(user_query, analysis, db_connection, output_filename, output_format):
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
+
+
+@click.command()
+@click.option('--user-query', required=True, help='SQL query to execute')
+@click.option('--analysis', required=True, help='Type of analysis to perform')
+@click.option('--db-connection', default="postgresql://postgres:postgres@localhost:5432/omop", 
+                       help='Database connection string')
+@click.option('--output-filename', help='Output filename', default='data')
+@click.option('--output-format', type=click.Choice(['json', 'csv']), default='json',
+                       help='Output format (json or csv)')
+def main(user_query, analysis, db_connection, output_filename, output_format):
+    """Click command wrapper for process_query."""
+    process_query(user_query, analysis, db_connection, output_filename, output_format)
+
 
 if __name__ == "__main__":
     import sys

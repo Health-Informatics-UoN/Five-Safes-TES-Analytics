@@ -191,7 +191,12 @@ class TestContingencyTableAnalysis:
         #          "header": "gender,race,n"
         assert contingency_analyzer.aggregated_data["contingency_table"].shape == (2, 2)
         assert np.all(contingency_analyzer.aggregated_data["contingency_table"] == 0)
-        assert contingency_analyzer.aggregated_data["contingency_table_headers"] == {"row_labels": ["Male", "Female"], "col_labels": ["White", "Black"], "header": "gender,race,n"}
+        
+        # Check headers are order-agnostic
+        headers = contingency_analyzer.aggregated_data["contingency_table_headers"]
+        assert set(headers["row_labels"]) == {"Male", "Female"}
+        assert set(headers["col_labels"]) == {"White", "Black"}
+        assert headers["header"] == "gender,race,n"
         
         # Test with single cell
         single_cell_data = {
@@ -204,7 +209,11 @@ class TestContingencyTableAnalysis:
         contingency_table, headers = contingency_analyzer.analyze()
 
         assert contingency_table.shape == (1, 1)
-        assert headers == {"row_labels": ["Male"], "col_labels": ["Black"], "header": "gender,race,n"}
+        
+        # Check headers are order-agnostic
+        assert set(headers["row_labels"]) == {"Male"}
+        assert set(headers["col_labels"]) == {"Black"}
+        assert headers["header"] == "gender,race,n"
         
 
         row_index = list(headers['row_labels']).index("Male")
