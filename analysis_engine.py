@@ -76,7 +76,13 @@ class AnalysisEngine:
             bucket = os.getenv('MINIO_OUTPUT_BUCKET')
             if not bucket:
                 raise ValueError("MINIO_OUTPUT_BUCKET environment variable is required when bucket parameter is not provided")
-        
+        if tres is None:
+            tres_env = os.getenv('TRE_FX_TRES')
+            if not tres_env:
+                raise ValueError("TRE_FX_TRES environment variable is required when tres parameter is not provided")
+            # Parse comma-separated TRE names into a list
+            tres = [tre.strip() for tre in tres_env.split(',') if tre.strip()]
+
         # Check if user is trying to run analysis on existing data
         if user_query is None and tres is None:
             # User wants to run analysis on existing aggregated data
@@ -397,7 +403,7 @@ if __name__ == "__main__":
     
     # Example: Run variance analysis first, then mean analysis on the same data
     user_query = """SELECT value_as_number FROM public.measurement 
-WHERE measurement_concept_id = 3037532
+WHERE measurement_concept_id = 21490742
 AND value_as_number IS NOT NULL"""
     
     print("Running mean analysis...")
@@ -405,7 +411,6 @@ AND value_as_number IS NOT NULL"""
         analysis_type="mean",
         task_name="DEMO: mean analysis test",
         user_query=user_query,
-        tres=["Nottingham", "Nottingham 2"]
     )
     
     print(f"Mean analysis result: {mean_result['result']}")
