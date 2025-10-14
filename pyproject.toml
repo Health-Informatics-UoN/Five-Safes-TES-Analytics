@@ -15,6 +15,9 @@ pytest-mock = "^3.14.1"
 sqlalchemy = "^2.0.44"
 click = "^8.3.0"
 tdigest = "^0.5.2.2"
+minio = "^7.0.0"
+pytest = "^7.0.0"
+python-dotenv = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -9,7 +9,6 @@ from statistical_analyzer import StatisticalAnalyzer
 from tes_client import TESClient
 from tes_client import get_status_description
 from minio_client import MinIOClient
-import tes
 import polling
 
 # Load environment variables from .env file

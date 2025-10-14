@@ -131,7 +131,7 @@ class TestAnalysisCompatibility:
         engine.statistical_analyzer.analyze_data = Mock(side_effect=mock_analyze_data)
         
         # Run variance analysis first
-        user_query = "SELECT value_as_number FROM public.measurement WHERE measurement_concept_id = 3037532"
+        user_query = "SELECT value_as_number FROM public.measurement WHERE measurement_concept_id = 21490742"
         result1 = engine.run_analysis(
             "variance",
             user_query,

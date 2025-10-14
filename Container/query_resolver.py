@@ -25,7 +25,7 @@ class DecimalEncoder(json.JSONEncoder):
 # Your original query - just execute it directly
 #user_query = """
 #SELECT value_as_number FROM public.measurement 
-#WHERE measurement_concept_id = 3037532
+#WHERE measurement_concept_id = 21490742
 #AND value_as_number IS NOT NULL
 #"""
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         # Use test values
         user_query = """
 SELECT value_as_number FROM public.measurement 
-WHERE measurement_concept_id = 3037532
+WHERE measurement_concept_id = 21490742
 AND value_as_number IS NOT NULL
 """
         analysis = 'mean'
