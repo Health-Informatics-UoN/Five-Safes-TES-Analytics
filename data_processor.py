@@ -100,6 +100,47 @@ class DataProcessor:
     #                 data = np.vstack((data, file_data.reshape(1, -1)))  # Stack subsequent arrays
     #     return data
     
+    def aggregate_data(self, inputs: Union[List[str], Dict[str, List[float]]], analysis_type: str) -> Union[np.ndarray, List[np.ndarray]]:
+        """
+        Aggregate data based on analysis type.
+        
+        Args:
+            inputs: Either List[str] (CSV strings) or Dict[str, List[float]] (JSON dict of lists)
+            analysis_type (str): Type of analysis to perform
+            
+        Returns:
+            Union[np.ndarray, List[np.ndarray]]: Aggregated data
+        """
+        from statistical_analyzer import StatisticalAnalyzer
+        
+        analyzer = StatisticalAnalyzer()
+        analysis_config = analyzer.get_analysis_config(analysis_type)
+        
+        if analysis_config["return_format"] == "contingency_table":
+            if isinstance(inputs, dict):
+                # Handle JSON dict format for contingency tables
+                # This would need special handling for contingency tables in JSON format
+                raise NotImplementedError("JSON format not yet supported for contingency tables")
+            else:
+                # Handle CSV string format (existing logic)
+                combined_table = combine_contingency_tables(inputs)
+                data = dict_to_array(combined_table)
+        else:
+            if isinstance(inputs, dict):
+                # Handle JSON dict format: {"n": [65.0, 42.0], "total": [117.0, 89.0]}
+                # Convert dict of lists to numpy array
+                keys = list(inputs.keys())
+                values = [inputs[key] for key in keys]
+                data = np.array(values).T  # Transpose to get rows as data points
+            else:
+                # Handle CSV string format (existing logic)
+                data = [self.import_csv_data(input) for input in inputs]
+                # Convert list of arrays to single numpy array using vstack
+                if data and len(data) > 0:
+                    data = np.vstack(data)
+        
+        return data
+
 def combine_contingency_tables(contingency_tables: List[str] | Dict[str, Any]) -> Dict[str, Any]:
     """
     Combine multiple contingency tables.
@@ -171,47 +212,6 @@ def combine_contingency_tables(contingency_tables: List[str] | Dict[str, Any]) -
     #     
     #     array_table = self.dict_to_array(labels)
     #     return array_table
-    
-    def aggregate_data(self, inputs: Union[List[str], Dict[str, List[float]]], analysis_type: str) -> Union[np.ndarray, List[np.ndarray]]:
-        """
-        Aggregate data based on analysis type.
-        
-        Args:
-            inputs: Either List[str] (CSV strings) or Dict[str, List[float]] (JSON dict of lists)
-            analysis_type (str): Type of analysis to perform
-            
-        Returns:
-            Union[np.ndarray, List[np.ndarray]]: Aggregated data
-        """
-        from statistical_analyzer import StatisticalAnalyzer
-        
-        analyzer = StatisticalAnalyzer()
-        analysis_config = analyzer.get_analysis_config(analysis_type)
-        
-        if analysis_config["return_format"] == "contingency_table":
-            if isinstance(inputs, dict):
-                # Handle JSON dict format for contingency tables
-                # This would need special handling for contingency tables in JSON format
-                raise NotImplementedError("JSON format not yet supported for contingency tables")
-            else:
-                # Handle CSV string format (existing logic)
-                combined_table = combine_contingency_tables(inputs)
-                data = dict_to_array(combined_table)
-        else:
-            if isinstance(inputs, dict):
-                # Handle JSON dict format: {"n": [65.0, 42.0], "total": [117.0, 89.0]}
-                # Convert dict of lists to numpy array
-                keys = list(inputs.keys())
-                values = [inputs[key] for key in keys]
-                data = np.array(values).T  # Transpose to get rows as data points
-            else:
-                # Handle CSV string format (existing logic)
-                data = [self.import_csv_data(input) for input in inputs]
-                # Convert list of arrays to single numpy array using vstack
-                if data and len(data) > 0:
-                    data = np.vstack(data)
-        
-        return data
     
 def dict_to_array(contingency_dict: Dict[str, Any]) -> np.ndarray:
     """
