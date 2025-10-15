@@ -249,39 +249,6 @@ class TESClient:
         self.default_image = default_image or os.getenv('TES_DOCKER_IMAGE')
         if not self.default_image:
             raise ValueError("TES_DOCKER_IMAGE environment variable is required")
-        
-        default_db_port = default_db_port or os.getenv('DB_PORT')
-        if not default_db_port:
-            raise ValueError("DB_PORT environment variable is required")
-        
-        if default_db_config is None:
-            db_host = os.getenv('DB_HOST')
-            if not db_host:
-                raise ValueError("DB_HOST environment variable is required")
-            
-            db_username = os.getenv('DB_USERNAME')
-            if not db_username:
-                raise ValueError("DB_USERNAME environment variable is required")
-            
-            db_password = os.getenv('DB_PASSWORD')
-            if not db_password:
-                raise ValueError("DB_PASSWORD environment variable is required")
-            
-            db_name = os.getenv('DB_NAME')
-            if not db_name:
-                raise ValueError("DB_NAME environment variable is required")
-            
-            self.default_db_config = {
-                "host": db_host,
-                "username": db_username,
-                "password": db_password,
-                "name": db_name,
-                "port": default_db_port
-            }
-        else:
-            self.default_db_config = default_db_config
-    
-    
     def _build_api_url(self, base_url: str, endpoint: str, query_params: Dict[str, str] = None) -> str:
         """
         Build a complete API URL with proper path joining and query parameters.
@@ -328,8 +295,6 @@ class TESClient:
         if image is None:
             image = self.default_image
         
-        if db_config is None:
-            db_config = self.default_db_config
         
         task = {
             "name": name,
@@ -346,15 +311,10 @@ class TESClient:
                 {
                     "image": image,
                     "command": [
-                        f"--Connection=Host={db_config['host']}:{db_config['port']};Username={db_config['username']};Password={db_config['password']};Database={db_config['name']}",
                         f"--Output={output_path}/output.csv",
                         f"--Query={query}"
                     ],
-                    "env": {
-                        "DATASOURCE_DB_DATABASE": db_config['name'],
-                        "DATASOURCE_DB_HOST": db_config['host'],
-                        "DATASOURCE_DB_PASSWORD": db_config['password'],
-                        "DATASOURCE_DB_USERNAME": db_config['username']
+                    "env": {    
                     },
                     "workdir": "/app"
                 }
@@ -414,8 +374,6 @@ class TESClient:
         if image is None:
             image = self.default_image
         
-        if db_config is None:
-            db_config = self.default_db_config
         
         # If a TES task is provided, use its executor configuration
         if query is None:
@@ -424,15 +382,10 @@ class TESClient:
         executors = [{
             "image": image,
             "command": [
-                f"--Connection=Host={db_config['host']}:{db_config['port']};Username={db_config['username']};Password={db_config['password']};Database={db_config['name']}",
                 f"--Output={output_path}/output.csv",
                 f"--Query={query}"
             ],
-            "env": {
-                "DATASOURCE_DB_DATABASE": db_config['name'],
-                "DATASOURCE_DB_HOST": db_config['host'],
-                "DATASOURCE_DB_PASSWORD": db_config['password'],
-                "DATASOURCE_DB_USERNAME": db_config['username']
+            "env": {      
             },
             "workdir": "/app"
         }]
