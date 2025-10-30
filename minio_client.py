@@ -358,7 +358,7 @@ class MinIOClient:
             print(f"Failed to decode JSON from object {object_path} in bucket {bucket}")
             return None
 
-    def get_object_smart(self, bucket: str, object_path: str) -> Optional[Union[str, Dict]]:
+    def get_object_smart(self, bucket: str, object_path: str) -> Optional[Union[str, Dict, List]]:
         """
         Get object content from MinIO and automatically detect format.
         
@@ -367,7 +367,7 @@ class MinIOClient:
             object_path (str): Path to the object within the bucket
             
         Returns:
-            Optional[Union[str, Dict]]: Parsed JSON object or string content, or None if not found
+            Optional[Union[str, Dict, List]]: Parsed JSON object, list, or string content, or None if not found
         """
         content = self.get_object(bucket, object_path)
         if content is None:
@@ -376,7 +376,8 @@ class MinIOClient:
         # Try JSON first
         try:
             json_data = json.loads(content)
-            return self.combine_data(json_data)
+            # Return JSON data as-is (could be dict, list, or other valid JSON)
+            return json_data
         except json.JSONDecodeError:
             # Try CSV parsing
             try:

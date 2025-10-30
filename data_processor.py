@@ -100,12 +100,13 @@ class DataProcessor:
     #                 data = np.vstack((data, file_data.reshape(1, -1)))  # Stack subsequent arrays
     #     return data
     
-    def aggregate_data(self, inputs: Union[List[str], Dict[str, List[float]]], analysis_type: str) -> Union[np.ndarray, List[np.ndarray]]:
+    def aggregate_data(self, inputs: Union[List[str], Dict[str, List[float]], List[Dict[str, Any]]], analysis_type: str) -> Union[np.ndarray, List[np.ndarray]]:
         """
         Aggregate data based on analysis type.
         
         Args:
-            inputs: Either List[str] (CSV strings) or Dict[str, List[float]] (JSON dict of lists)
+            inputs: Either List[str] (CSV strings), Dict[str, List[float]] (pre-aggregated JSON dict), 
+                    or List[Dict[str, Any]] (list of JSON results from multiple TREs)
             analysis_type (str): Type of analysis to perform
             
         Returns:
@@ -116,11 +117,41 @@ class DataProcessor:
         analyzer = StatisticalAnalyzer()
         analysis_config = analyzer.get_analysis_config(analysis_type)
         
+        # Check if inputs is a list of results from multiple TREs
+        if isinstance(inputs, list) and inputs:
+            # Check if first element is a dict (for mean, variance, PMCC)
+            if isinstance(inputs[0], dict):
+                # Handle list of dicts: [{"n": 65, "total": 117.0}, {"n": 42, "total": 89.0}, ...]
+                # Convert to dict of lists: {"n": [65, 42, ...], "total": [117.0, 89.0, ...]}
+                combined = {}
+                for item in inputs:
+                    if isinstance(item, dict):
+                        for key, value in item.items():
+                            if key not in combined:
+                                combined[key] = []
+                            combined[key].append(value)
+                inputs = combined
+            # Check if first element is a list (for contingency tables)
+            elif isinstance(inputs[0], list):
+                # Handle list of lists: [[{"category": "A", "n": 10}, ...], [{"category": "B", "n": 20}, ...]]
+                # Flatten all rows from all TREs into a single list
+                # The statistical analyzer will handle the aggregation
+                flattened = []
+                for table_list in inputs:
+                    if isinstance(table_list, list):
+                        flattened.extend(table_list)
+                
+                # Store as dict with "contingency_table" key
+                inputs = {"contingency_table": flattened}
+        
         if analysis_config["return_format"] == "contingency_table":
             if isinstance(inputs, dict):
                 # Handle JSON dict format for contingency tables
-                # This would need special handling for contingency tables in JSON format
-                raise NotImplementedError("JSON format not yet supported for contingency tables")
+                if "contingency_table" in inputs:
+                    # Already in the format {"contingency_table": [list of dicts]}
+                    # Pass directly to statistical analyzer which will handle aggregation
+                    data = inputs
+
             else:
                 # Handle CSV string format (existing logic)
                 combined_table = combine_contingency_tables(inputs)

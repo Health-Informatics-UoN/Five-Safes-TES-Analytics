@@ -5,12 +5,98 @@ import local_processing
 import json
 import click
 import sys
+import re
+from urllib.parse import quote_plus
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj)
         return super().default(obj)
+
+
+def parse_connection_string(connection_string: str) -> str:
+    """
+    Parse and convert a connection string to SQLAlchemy format.
+    
+    Handles two formats:
+    1. Semicolon-separated: "Host=host:port;Username=user;Password=pass;Database=db"
+    2. Already in SQLAlchemy format: "postgresql://user:pass@host:port/db"
+    
+    Also handles connection strings with command-line prefixes:
+    - "--Connection=Host=...;Username=...;..."
+    - "--db-connection=postgresql://..."
+    
+    Args:
+        connection_string: Connection string in either format
+        
+    Returns:
+        Connection string in SQLAlchemy format: "postgresql://user:pass@host:port/db"
+    """
+    # Strip command-line prefixes if present
+    connection_string = connection_string.strip()
+    if connection_string.startswith('--Connection='):
+        connection_string = connection_string[13:]  # Remove "--Connection="
+    elif connection_string.startswith('--db-connection='):
+        connection_string = connection_string[17:]  # Remove "--db-connection="
+    
+    # If already in SQLAlchemy format (starts with a database URI scheme), return as-is
+    if re.match(r'^[a-zA-Z][a-zA-Z0-9+.-]*://', connection_string):
+        return connection_string
+    
+    # Parse semicolon-separated format: Host=host:port;Username=user;Password=pass;Database=db
+    params = {}
+    parts = connection_string.split(';')
+    
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        
+        if '=' not in part:
+            continue
+            
+        key, value = part.split('=', 1)
+        key = key.strip().lower()
+        value = value.strip()
+        
+        if key == 'host':
+            # Host might include port: "host:port"
+            if ':' in value:
+                params['host'], params['port'] = value.rsplit(':', 1)
+            else:
+                params['host'] = value
+                params['port'] = '5432'  # Default PostgreSQL port
+        elif key == 'username':
+            params['username'] = value
+        elif key == 'password':
+            params['password'] = value
+        elif key == 'database':
+            params['database'] = value
+        elif key == 'port':
+            # Handle explicit Port parameter if Host doesn't include it
+            params['port'] = value
+    
+    # Validate required parameters
+    required = ['host', 'username', 'password', 'database']
+    missing = [p for p in required if p not in params]
+    if missing:
+        raise ValueError(f"Missing required connection parameters: {', '.join(missing)}")
+    
+    # Set default port if not specified
+    if 'port' not in params:
+        params['port'] = '5432'
+    
+    # URL-encode username and password to handle special characters
+    username = quote_plus(params['username'])
+    password = quote_plus(params['password'])
+    
+    # Construct SQLAlchemy connection string
+    # Format: postgresql://username:password@host:port/database
+    sqlalchemy_string = f"postgresql://{username}:{password}@{params['host']}:{params['port']}/{params['database']}"
+    
+    return sqlalchemy_string
+
 
 ### These classes are to run on the node, to make SQL queries and perform the partial analysis to be aggregated later.
 
@@ -42,8 +128,11 @@ def process_query(user_query, analysis, db_connection, output_filename, output_f
     try:    
         output_filename = output_filename + '.' + output_format
         
+        # Parse and convert connection string to SQLAlchemy format if needed
+        sqlalchemy_connection = parse_connection_string(db_connection)
+        
         ## sample connection string: "postgresql://postgres:postgres@localhost:5432/postgres"
-        sql_engine = create_engine(db_connection)
+        sql_engine = create_engine(sqlalchemy_connection)
 
         registry = local_processing.LOCAL_PROCESSING_CLASSES
         if analysis not in registry:
@@ -144,9 +233,10 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:  # No command line arguments
         # Use test values
         user_query = """
-SELECT value_as_number FROM public.measurement 
-WHERE measurement_concept_id = 21490742
-AND value_as_number IS NOT NULL
+  SELECT value_as_number
+  FROM measurement
+  WHERE measurement_concept_id = 21490742
+    AND value_as_number IS NOT NULL
 """
         analysis = 'mean'
         db_connection = "postgresql://postgres:postgres@localhost:5432/omop"

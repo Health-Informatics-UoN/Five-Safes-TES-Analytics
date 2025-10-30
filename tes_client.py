@@ -383,7 +383,8 @@ class TESClient:
         output_path: str = "/outputs",
         image: str = None,
         db_config: dict = None,
-        query: str = None
+        query: str = None,
+        analysis_type: str = None
     ) -> tuple[dict, int]:
         """
         Generate a submission template JSON configuration.
@@ -398,6 +399,7 @@ class TESClient:
             image (str): Docker image to use
             db_config (dict): Database configuration
             query (str): SQL query to execute
+            analysis_type (str): Type of analysis to perform (e.g., 'mean', 'variance', 'PMCC', etc.)
         
         Returns:
             tuple[dict, int]: Submission template configuration and number of TREs
@@ -421,12 +423,23 @@ class TESClient:
         if query is None:
             query = f"SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 21490742"
         
+        if analysis_type is None:
+            raise ValueError("analysis_type parameter is required")
+        
+        # Construct database connection string in PostgreSQL format
+        db_connection_string = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['name']}"
+        
+        # Output filename without extension (will be .json or .csv based on output-format)
+        output_filename = f"{output_path}/output"
+        
         executors = [{
             "image": image,
             "command": [
-                f"--Connection=Host={db_config['host']}:{db_config['port']};Username={db_config['username']};Password={db_config['password']};Database={db_config['name']}",
-                f"--Output={output_path}/output.csv",
-                f"--Query={query}"
+                f"--user-query={query}",
+                f"--analysis={analysis_type}",
+                f"--db-connection={db_connection_string}",
+                f"--output-filename={output_filename}",
+                "--output-format=json"
             ],
             "env": {
                 "DATASOURCE_DB_DATABASE": db_config['name'],

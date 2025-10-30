@@ -116,7 +116,7 @@ class AnalysisEngine:
             
             task_id = result['id']
             print(f"Task ID: {task_id}")
-            results_paths = [f"{int(task_id) + i + 1}/output.csv" for i in range(n_results)]
+            results_paths = [f"{int(task_id) + i + 1}/output.json" for i in range(n_results)]
             
 
 
