@@ -423,7 +423,7 @@ if __name__ == "__main__":
     
     # Example: Run variance analysis first, then mean analysis on the same data
     user_query = """SELECT value_as_number FROM public.measurement 
-WHERE measurement_concept_id = 3037532
+WHERE measurement_concept_id = 21490742
 AND value_as_number IS NOT NULL"""
     
     print("Running mean analysis...")

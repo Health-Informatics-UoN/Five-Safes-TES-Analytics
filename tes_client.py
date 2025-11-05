@@ -377,7 +377,7 @@ class TESClient:
         
         # If a TES task is provided, use its executor configuration
         if query is None:
-            query = f"SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 3037532"
+            query = f"SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 21490742"
         
         executors = [{
             "image": image,
@@ -549,7 +549,7 @@ if __name__ == "__main__":
     
     # Generate a simple task
     task = client.generate_tes_task(
-        query="SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 3037532",
+        query="SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 21490742",
         name="Test Analysis"
     )
     
