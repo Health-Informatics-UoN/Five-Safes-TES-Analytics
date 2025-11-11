@@ -83,7 +83,7 @@ class TestQueryResolver:
                 # Call process_query function directly
                 query_resolver.process_query(user_query, analysis, db_connection, output_filename, output_format)
                 
-                # Verify engine was created
+                # Verify engine was created with parsed URL (already SQLAlchemy format)
                 mock_create_engine.assert_called_once_with(db_connection)
                 
                 # Verify query was executed
@@ -108,6 +108,100 @@ class TestQueryResolver:
                     os.remove(output_file)
                 if os.path.exists(temp_filename):
                     os.remove(temp_filename)
+
+
+class TestConnectionStringParsing:
+    """Tests for converting semicolon-style connection strings to SQLAlchemy URLs."""
+
+    def test_parse_semicolon_format(self):
+        cs = "Host=localhost:5432;Username=user;Password=pass;Database=db"
+        result = query_resolver.parse_connection_string(cs)
+        assert result == "postgresql://user:pass@localhost:5432/db"
+
+    def test_parse_with_prefixes(self):
+        cs = "--Connection=Host=db:5432;Username=postgres;Password=password;Database=omop"
+        result = query_resolver.parse_connection_string(cs)
+        assert result == "postgresql://postgres:password@db:5432/omop"
+
+    def test_parse_special_chars_in_credentials(self):
+        cs = "Host=mydb:5432;Username=user+name;Password=p@ss word;Database=d_b"
+        result = query_resolver.parse_connection_string(cs)
+        # user+name -> user%2Bname, p@ss word -> p%40ss+word
+        assert result == "postgresql://user%2Bname:p%40ss+word@mydb:5432/d_b"
+
+    def test_process_query_uses_converted_url(self):
+        user_query = "SELECT value_as_number FROM measurements"
+        analysis = "mean"
+        semicolon_cs = "Host=db:5432;Username=postgres;Password=secret;Database=omop"
+        output_filename = "conn_parse_it"
+        output_format = "json"
+
+        with patch('query_resolver.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_conn = Mock()
+
+            from sqlalchemy.engine import Result
+            mock_result = Mock(spec=Result)
+            mock_result.keys.return_value = ["n", "total"]
+            mock_result.fetchall.return_value = [(1, 2.0)]
+
+            mock_connection_context = Mock()
+            mock_connection_context.__enter__ = Mock(return_value=mock_conn)
+            mock_connection_context.__exit__ = Mock(return_value=None)
+
+            mock_create_engine.return_value = mock_engine
+            mock_engine.connect.return_value = mock_connection_context
+            mock_conn.execute.return_value = mock_result
+
+            try:
+                query_resolver.process_query(user_query, analysis, semicolon_cs, output_filename, output_format)
+
+                expected_url = "postgresql://postgres:secret@db:5432/omop"
+                mock_create_engine.assert_called_once_with(expected_url)
+            finally:
+                out = f"{output_filename}.{output_format}"
+                if os.path.exists(out):
+                    os.remove(out)
+
+
+class TestClickCLI:
+    """Validate Click command options and defaults."""
+
+    def test_click_options_exist(self):
+        """Test that all expected Click options exist.
+        
+        Note: Click converts dashes to underscores in parameter names.
+        So --user-query becomes user_query, --db-connection becomes db_connection, etc.
+        """
+        cmd = query_resolver.main
+        option_names = {opt.name for opt in cmd.params}
+        # Expected parameter names (with underscores, not dashes)
+        expected_params = {'user_query', 'analysis', 'db_connection', 'output_filename', 'output_format'}
+        assert expected_params <= option_names, f"Missing options. Found: {option_names}, Expected: {expected_params}"
+
+    def test_click_cli_option_names(self):
+        """Test that CLI option names (with dashes) are correct.
+        
+        opt.opts contains the CLI option names (e.g., ['--user-query']),
+        while opt.name contains the Python parameter name (e.g., 'user_query').
+        """
+        cmd = query_resolver.main
+        cli_options = set()
+        for opt in cmd.params:
+            # opt.opts is a list like ['--user-query'] or ['-u', '--user-query']
+            for cli_opt in opt.opts:
+                if cli_opt.startswith('--'):
+                    cli_options.add(cli_opt[2:])  # Remove '--' prefix
+        
+        expected_cli_options = {'user-query', 'analysis', 'db-connection', 'output-filename', 'output-format'}
+        assert expected_cli_options <= cli_options, f"Missing CLI options. Found: {cli_options}, Expected: {expected_cli_options}"
+
+    def test_output_format_default_json(self):
+        """Test that output-format option defaults to 'json'."""
+        cmd = query_resolver.main
+        # Click converts --output-format to output_format as the parameter name
+        out_opt = next(opt for opt in cmd.params if opt.name == 'output_format')
+        assert out_opt.default == 'json'
     
     def test_main_function_with_unsupported_analysis(self):
         """Test main function with unsupported analysis type."""
@@ -417,7 +511,7 @@ class TestDockerBuildAndRun:
             
             # Check for required components
             assert "FROM python:3.12" in dockerfile_content
-            assert "ADD query_resolver.py" in dockerfile_content
+            assert "COPY query_resolver.py" in dockerfile_content
             assert "COPY local_processing.py" in dockerfile_content
             assert "RUN pip install" in dockerfile_content
             assert "ENTRYPOINT" in dockerfile_content
@@ -442,7 +536,7 @@ class TestDockerBuildAndRun:
                 dockerfile_content = f.read()
             
             # Check for required Python packages
-            required_packages = ['click', 'sqlalchemy', 'numpy', 'tdigest']
+            required_packages = ['click', 'sqlalchemy', 'psycopg2-binary', 'numpy', 'tdigest']
             
             for package in required_packages:
                 assert package in dockerfile_content, f"Required package {package} not found in Dockerfile"
