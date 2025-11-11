@@ -143,7 +143,6 @@ def process_query(user_query, analysis, db_connection, output_filename, output_f
 
 
         query = processor.build_query()
-        print(f"DEBUG: Executing query: {query}")
 
         ## execute query
         with sql_engine.connect() as conn:
