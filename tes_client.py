@@ -347,7 +347,7 @@ class TESClient:
                     "image": image,
                     "command": [
                         f"--Connection=Host={db_config['host']}:{db_config['port']};Username={db_config['username']};Password={db_config['password']};Database={db_config['name']}",
-                        f"--Output={output_path}/output.csv",
+                        f"--Output={output_path}/output",
                         f"--Query={query}"
                     ],
                     "env": {
@@ -570,8 +570,11 @@ class TESClient:
             response = requests.get(url, headers=headers)
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"Error getting task status: {str(e)}")
-            raise
+            print(f"Error getting task status: {str(e)}, retrying...")
+            response = requests.get(url, headers=headers)
+            return response.json()
+            ## if it fails again, it will raise an exception
+            #raise
 
 
 
