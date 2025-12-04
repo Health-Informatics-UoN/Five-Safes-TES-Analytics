@@ -331,12 +331,12 @@ class StatisticalAnalyzer:
         """
         return list(self.analysis_classes.keys())
     
-    def analyze_data(self, input_data: Union[np.ndarray, List[np.ndarray]], analysis_type: str) -> Union[float, Dict[str, Any]]:
+    def analyze_data(self, input_data: Union[np.ndarray, List[np.ndarray], Dict[str, List[float]]], analysis_type: str) -> Union[float, Dict[str, Any]]:
         """
         Analyze data using the specified analysis type.
         
         Args:
-            input_data: Input data (numpy array or list of arrays)
+            input_data: Input data (numpy array, list of arrays, or dict of lists)
             analysis_type (str): Type of analysis to perform
             
         Returns:

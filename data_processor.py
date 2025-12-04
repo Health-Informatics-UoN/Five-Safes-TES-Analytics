@@ -1,8 +1,5 @@
 import numpy as np
-import csv
-from collections import defaultdict
 from typing import List, Dict, Any, Union
-import os
 import json
 
 
@@ -15,91 +12,60 @@ class DataProcessor:
         """Initialize the data processor."""
         pass
     
-    def import_csv_data(self, input_data: Union[str, List[str]]) -> np.ndarray:
+
+    def convert_csv_to_dict(self, csv_inputs: List[str], analysis_config: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Import data from CSV string or list of strings.
+        Convert CSV strings to dict format matching the analysis return_format.
         
         Args:
-            input_data: CSV string or list of CSV strings
+            csv_inputs: List of CSV strings from multiple TREs
+            analysis_config: Analysis configuration with return_format
             
         Returns:
-            np.ndarray: Parsed numerical data
+            Dict in the format expected by the analysis (dict of lists for single-row,
+            or dict with row_data_key for row-based analyses)
         """
-        if isinstance(input_data, str):
-            # Remove header if present
-            lines = input_data.split("\n")
-            if len(lines) > 1:
-                input_data = lines[1]  # Take first data line
-            
-            values = np.array([int(x) for x in input_data.split(",")])
-            return values
+        return_format_keys = list(analysis_config["return_format"].keys())
+        is_row_based = len(return_format_keys) == 1
+        
+        if is_row_based:
+            # For row-based analyses: convert CSV to list of dicts, then wrap in return_format key
+            # Use combine_contingency_tables to parse and aggregate CSV
+            combined_table = combine_contingency_tables(csv_inputs)
+            # Convert back to list of dicts format
+            list_of_dicts = []
+            header = combined_table.get("header", "").split(",")
+            for key, value in combined_table.items():
+                if key != "header":
+                    row_dict = {}
+                    parts = key.split(",")
+                    for i, part in enumerate(parts):
+                        if i < len(header) - 1:  # Exclude 'n' column
+                            row_dict[header[i]] = part
+                    row_dict["n"] = value
+                    list_of_dicts.append(row_dict)
+            row_data_key = return_format_keys[0]
+            return {row_data_key: list_of_dicts}
         else:
-            # Handle list of strings
-            return np.array([int(x) for x in input_data[0].split(",")])
-    
-    # def get_result_from_local_file(self, file_path: str) -> List[str] | dict:
-    #     """
-    #     Read results from a local CSV file.
-    #     
-    #     Args:
-    #         file_path (str): Path to the CSV file
-    #         
-    #     Returns:
-    #         List[str]: Data from the file
-    #     """
-    #     if not os.path.exists(file_path):
-    #         raise FileNotFoundError(f"File not found: {file_path}")
-    #     
-    #     if file_path.endswith('.json'):
-    #         with open(file_path, 'r') as file:
-    #             return json.load(file)
-    #     
-    #     elif file_path.endswith('.csv'):
-    #         with open(file_path, 'r') as file:
-    #             reader = csv.reader(file)
-    #             next(reader)  # Skip header row
-    #             for row in reader:
-    #                 return row  # Return first data row
-    
-    # def combine_file_data(self, file_list: List[str]) -> np.ndarray | dict:
-    #     """
-    #     Combine data from multiple local files.
-    #     
-    #     Args:
-    #         file_list (List[str]): List of file paths
-    #         
-    #     Returns:
-    #         np.ndarray: Combined data as 2D array
-    #     """
-    #     data = None
-    #     for file_path in file_list:
-    #         
-    #         #file_data = np.array(self.get_result_from_local_file(file_path)).astype(float)
-    #         file_data = self.get_result_from_local_file(file_path) ## could return a dict if it is json data
-
-    #         if isinstance (file_data, list):
-    #             file_data = np.array(file_data).astype(float)
-    #         elif isinstance (file_data, dict):
-    #             #values = [file_data[key][0] for key in file_data.keys()]
-    #             #file_data = np.array([values])
-    #             if data is None:
-    #                 data = {}
-    #             for key, value in file_data.items():
-    #                 if key not in data:
-    #                     data[key] = []
-    #                 data[key].append(value[0])
+            # For single-row analyses: convert CSV to dict of lists
+            # CSV format: "n,total\n65,117.0" -> {"n": [65], "total": [117.0]}
+            result_dict = {}
+            for csv_str in csv_inputs:
+                lines = csv_str.strip().split("\n")
+                if len(lines) < 2:
+                    continue
+                header = lines[0].split(",")
+                values = lines[1].split(",")
+                for i, key in enumerate(header):
+                    if key not in result_dict:
+                        result_dict[key] = []
+                    try:
+                        result_dict[key].append(float(values[i]))
+                    except (ValueError, IndexError):
+                        continue
+            return result_dict
 
 
-    #         elif isinstance (file_data, np.ndarray):
-    #             file_data = file_data.astype(float)
-    #         
-    #         if not isinstance(data, dict):
-    #             if data is not None:
-    #                 data = file_data.reshape(1, -1)  # First array, reshape to 2D
-    #             else:
-    #                 data = np.vstack((data, file_data.reshape(1, -1)))  # Stack subsequent arrays
-    #     return data
-    
     def aggregate_data(self, inputs: Union[List[str], Dict[str, List[float]], List[Dict[str, Any]]], analysis_type: str) -> Union[np.ndarray, List[np.ndarray]]:
         """
         Aggregate data based on analysis type.
@@ -117,9 +83,14 @@ class DataProcessor:
         analyzer = StatisticalAnalyzer()
         analysis_config = analyzer.get_analysis_config(analysis_type)
         
+        # Convert CSV strings to dict format if needed (before other processing)
+        if isinstance(inputs, list) and inputs and isinstance(inputs[0], str):
+            # CSV format detected - convert to dict format matching return_format
+            inputs = self.convert_csv_to_dict(inputs, analysis_config)
+
         # Check if inputs is a list of results from multiple TREs
         if isinstance(inputs, list) and inputs:
-            # Check if first element is a dict (for mean, variance, PMCC)
+            # Check if first element is a dict (for mean, variance, PMCC - single row results)
             if isinstance(inputs[0], dict):
                 # Handle list of dicts: [{"n": 65, "total": 117.0}, {"n": 42, "total": 89.0}, ...]
                 # Convert to dict of lists: {"n": [65, 42, ...], "total": [117.0, 89.0, ...]}
@@ -131,7 +102,7 @@ class DataProcessor:
                                 combined[key] = []
                             combined[key].append(value)
                 inputs = combined
-            # Check if first element is a list (for contingency tables)
+            # Check if first element is a list (for row-based analyses like contingency tables)
             elif isinstance(inputs[0], list):
                 # Handle list of lists: [[{"category": "A", "n": 10}, ...], [{"category": "B", "n": 20}, ...]]
                 # Flatten all rows from all TREs into a single list
@@ -141,36 +112,14 @@ class DataProcessor:
                     if isinstance(table_list, list):
                         flattened.extend(table_list)
                 
-                # Store as dict with "contingency_table" key
-                inputs = {"contingency_table": flattened}
+                # Use the key from return_format instead of hardcoding "contingency_table"
+                # This makes it general for any row-based analysis
+                row_data_key = list(analysis_config["return_format"].keys())[0]
+                inputs = {row_data_key: flattened}
         
-        if analysis_config["return_format"] == "contingency_table":
-            if isinstance(inputs, dict):
-                # Handle JSON dict format for contingency tables
-                if "contingency_table" in inputs:
-                    # Already in the format {"contingency_table": [list of dicts]}
-                    # Pass directly to statistical analyzer which will handle aggregation
-                    data = inputs
-
-            else:
-                # Handle CSV string format (existing logic)
-                combined_table = combine_contingency_tables(inputs)
-                data = dict_to_array(combined_table)
-        else:
-            if isinstance(inputs, dict):
-                # Handle JSON dict format: {"n": [65.0, 42.0], "total": [117.0, 89.0]}
-                # Convert dict of lists to numpy array
-                keys = list(inputs.keys())
-                values = [inputs[key] for key in keys]
-                data = np.array(values).T  # Transpose to get rows as data points
-            else:
-                # Handle CSV string format (existing logic)
-                data = [self.import_csv_data(input) for input in inputs]
-                # Convert list of arrays to single numpy array using vstack
-                if data and len(data) > 0:
-                    data = np.vstack(data)
-        
-        return data
+        # All paths now result in dict format - just return it
+        # CSV conversion would happen earlier if needed (convert CSV to dict first)
+        return inputs
 
 def combine_contingency_tables(contingency_tables: List[str] | Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -217,32 +166,6 @@ def combine_contingency_tables(contingency_tables: List[str] | Dict[str, Any]) -
                 continue
     
     return labels
-    
-    
-    # def combine_contingency_files(self, file_list: List[str]) -> np.ndarray:
-    #     """
-    #     Combine contingency tables from multiple files.
-    #     
-    #     Args:
-    #         file_list (List[str]): List of file paths
-    #         
-    #     Returns:
-    #         np.ndarray: Combined contingency table as 2D array
-    #     """
-    #     labels = defaultdict(int)
-    #     
-    #     for file_path in file_list:
-    #         with open(file_path, 'r') as file:
-    #             reader = csv.reader(file)
-    #             labels["header"] = next(reader)
-    #             for row in reader:
-    #                 if len(row) < 2:  # Skip rows without enough parts
-    #                     continue
-    #                 row_without_count = ','.join(row[:-1])  # Get rest of row without count
-    #                 labels[row_without_count] += int(row[-1])
-    #     
-    #     array_table = self.dict_to_array(labels)
-    #     return array_table
     
 def dict_to_array(contingency_dict: Dict[str, Any]) -> np.ndarray:
     """

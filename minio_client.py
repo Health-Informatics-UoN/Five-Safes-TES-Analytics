@@ -7,6 +7,8 @@ import minio
 from dotenv import load_dotenv
 from minio import Minio
 import xml.etree.ElementTree as ET
+import csv
+from io import StringIO
 
 # Load environment variables from .env file
 load_dotenv()
@@ -381,8 +383,6 @@ class MinIOClient:
         except json.JSONDecodeError:
             # Try CSV parsing
             try:
-                import csv
-                from io import StringIO
                 reader = csv.DictReader(StringIO(content))
                 data = next(reader)
                 return data

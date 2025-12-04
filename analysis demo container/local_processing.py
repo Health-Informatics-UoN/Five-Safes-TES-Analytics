@@ -3,60 +3,15 @@ from sqlalchemy import create_engine, text
 from tdigest import TDigest
 import math
 import json
-
-class BaseLocalProcessing(ABC):
-    def __init__(self, analysis_type: str = None, user_query: str = None, engine = None):
-        # Use class attribute as default if no analysis_type provided
-        self.analysis_type = analysis_type if analysis_type is not None else getattr(self.__class__, 'analysis_type', None)
-        self.user_query = user_query
-        self.engine = engine
-
-    @property
-    @abstractmethod
-    def description(self):
-        """Description of the processing step."""
-        pass
-
-    @property
-    @abstractmethod
-    def processing_query(self):
-        """SQL fragment for the processing step."""
-        pass
-
-
-
-    @property
-    @abstractmethod
-    def user_query_requirements(self):
-        """Requirements for the user query."""
-        pass
-
-    def build_query(self) -> str:
-        """
-        Build a complete SQL query by combining user's data selection with analysis calculations.
-        """
-        analysis_type = getattr(self.__class__, 'analysis_type', None)
-        
-        if self.processing_query is None:
-            return self.user_query
-        # Check if the analysis_type is supported
-        if analysis_type not in LOCAL_PROCESSING_CLASSES:
-            raise ValueError(f"Unsupported analysis type: {analysis_type}")
-        # Combine user query with analysis part
-        query = f"""WITH user_query AS (
-{self.user_query}
-)
-{self.processing_query}"""
-        return query
-
-    def python_analysis(self, sql_result):
-        """
-        Optional Python-side analysis. Override in subclasses if needed.
-        By default, does nothing and returns None.
-        """
-        return None
+from local_processing_base import BaseLocalProcessing
 
 class Mean(BaseLocalProcessing):
+    """
+    Calculate the mean of a numeric column using SQL aggregation.
+    
+    Returns aggregated statistics (count and sum) that can be used to compute
+    the mean across multiple TREs. The mean is calculated as sum/n on the client side.
+    """
     analysis_type = "mean"
 
     @property
@@ -78,6 +33,12 @@ FROM user_query;"""
         return "Must select a single numeric column"
 
 class Variance(BaseLocalProcessing):
+    """
+    Calculate the variance of a numeric column using SQL aggregation.
+    
+    Returns aggregated statistics (count, sum, and sum of squares) that can be used
+    to compute variance across multiple TREs using the formula: Var = (sum_x2/n) - (sum/n)²
+    """
     analysis_type = "variance"
 
     @property
@@ -100,6 +61,13 @@ FROM user_query;"""
         return "Must select a single numeric column"
 
 class PMCC(BaseLocalProcessing):
+    """
+    Calculate Pearson's correlation coefficient between two numeric columns.
+    
+    Returns aggregated statistics (count, sums, and cross-products) needed to compute
+    PMCC across multiple TREs. The correlation is calculated on the client side after
+    aggregating results from all TREs.
+    """
     analysis_type = "PMCC"
 
     @property
@@ -126,6 +94,13 @@ FROM user_query;"""
 
 
 class ContingencyTable(BaseLocalProcessing):
+    """
+    Build a contingency table from one or more categorical columns.
+    
+    Dynamically detects columns from the user query and groups by them to count
+    occurrences. Returns raw counts for each combination of categorical values,
+    which can be aggregated across multiple TREs.
+    """
     analysis_type = "contingency_table"
 
     @property
@@ -165,8 +140,15 @@ ORDER BY {group_by};"""
         return "Must select one or more categorical columns"
 
 class PercentileSketch(BaseLocalProcessing):
-    analysis_type = "percentile_sketch" ## might be better to call it something to do with digests, or the specific percentile sketch algorithm.
-    ## see here: https://github.com/CamDavidsonPilon/tdigest
+    """
+    Calculate percentile sketch using TDigest algorithm.
+    
+    Uses TDigest (https://github.com/CamDavidsonPilon/tdigest) to create a compact
+    representation of the data distribution. The sketch is computed in Python after
+    fetching all data from SQL, and returns a TDigest dictionary that can be merged
+    across multiple TREs.
+    """
+    analysis_type = "percentile_sketch"
         
     @property
     def description(self):
@@ -188,7 +170,7 @@ class PercentileSketch(BaseLocalProcessing):
             ## need to filter out missing values, null or NaN. If it's missing, it should only be None, but it's technically possible for NaN to be returned.
             if row[0] is not None and not math.isnan(row[0]):
                 tdigest.update(row[0])
-        return json.dumps(tdigest.to_dict())
+        return tdigest.to_dict()  # Return dict, not JSON string - json.dump will handle serialization
 
 
 def get_local_processing_registry():
