@@ -86,3 +86,6 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json 
+*.bak
+
+tes-task.json
