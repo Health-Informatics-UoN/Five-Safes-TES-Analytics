@@ -28,6 +28,11 @@ class TestDataProcessor:
     def processor(self):
         """Set up test fixtures."""
         return DataProcessor()
+
+    @pytest.fixture
+    def analyzer(self):
+        """Set up test fixtures."""
+        return StatisticalAnalyzer()
     
     def test_aggregate_data_mean(self, processor):
         """Test data aggregation for mean analysis."""
@@ -39,10 +44,10 @@ class TestDataProcessor:
         result = processor.aggregate_data(data, "mean")
         
         # Should return numpy array with aggregated values
-        assert isinstance(result, np.ndarray)
+        assert isinstance(result, dict)
         assert len(result) == 2  # Two rows
-        assert result[0][0] == 10  # n from first dataset
-        assert result[0][1] == 100  # total from first dataset
+        assert result['n'][0] == 10  # n from first dataset
+        assert result['total'][0] == 100  # total from first dataset
     
     def test_aggregate_data_variance(self, processor):
         """Test data aggregation for variance analysis."""
@@ -50,10 +55,10 @@ class TestDataProcessor:
         data = [csv_data]
         result = processor.aggregate_data(data, "variance")
         
-        assert isinstance(result, np.ndarray)
-        assert result[0][0] == 10  # n
-        assert result[0][1] == 1000  # sum_x2
-        assert result[0][2] == 100  # total
+        assert isinstance(result, dict)
+        assert result['n'][0] == 10  # n
+        assert result['sum_x2'][0] == 1000  # sum_x2
+        assert result['total'][0] == 100  # total
     
     def test_aggregate_data_pmcc(self, processor):
         """Test data aggregation for PMCC analysis."""
@@ -61,31 +66,45 @@ class TestDataProcessor:
         data = [csv_data]
         result = processor.aggregate_data(data, "pmcc")
         
-        assert isinstance(result, np.ndarray)
-        assert result[0][0] == 5  # n
-        assert result[0][1] == 10  # sum_x
-        assert result[0][2] == 20  # sum_y
+        assert isinstance(result, dict)
+        assert result['n'][0] == 5  # n
+        assert result['sum_x'][0] == 10  # sum_x
+        assert result['sum_y'][0] == 20  # sum_y
     
     def test_aggregate_data_contingency_table(self, processor):
-        """Test data aggregation for chi-squared analysis."""
-        # Use numerical data that can be parsed as integers
-        csv_data = "10,15,25\n20,25,45\n"  # Simple contingency table data
+        """Test data aggregation for contingency table analysis."""
+        # CSV data must include a header row; last column is the count
+        csv_data = (
+            "gender,race,count\n"
+            "Male,White,10\n"
+            "Male,Black,15\n"
+            "Female,White,20\n"
+            "Female,Black,25\n"
+        )
         data = [csv_data]
         result = processor.aggregate_data(data, "contingencytable")
-        
-        # Should return a contingency table
-        assert isinstance(result, np.ndarray)
-        # The exact structure depends on the implementation
 
+        # DataProcessor should convert CSV into dict format matching the analysis return_format:
+        # {"contingency_table": [ {\"gender\": ..., \"race\": ..., \"n\": ...}, ... ]}
+        assert isinstance(result, dict)
+        assert "contingency_table" in result
 
-class TestStatisticalAnalyzer:
-    """Test cases for StatisticalAnalyzer class."""
-    
-    @pytest.fixture
-    def analyzer(self):
-        """Set up test fixtures."""
-        return StatisticalAnalyzer()
-    
+        rows = result["contingency_table"]
+        assert isinstance(rows, list)
+        assert len(rows) == 4
+
+        # Check that each row has expected keys and counts
+        expected_rows = {
+            ("Male", "White", 10),
+            ("Male", "Black", 15),
+            ("Female", "White", 20),
+            ("Female", "Black", 25),
+        }
+        actual_rows = {
+            (row["gender"], row["race"], row["n"]) for row in rows
+        }
+        assert actual_rows == expected_rows
+
     def test_analyze_data_mean(self, analyzer):
         """Test mean analysis."""
         # Mock aggregated data: n=10, total=100
