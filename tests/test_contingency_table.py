@@ -115,6 +115,19 @@ class TestContingencyTableAnalysis:
         expected_col_sums = {97, 51, 27}
         actual_col_sums = set(col_sums)
         assert actual_col_sums == expected_col_sums
+        
+        # Check that headers are created
+        assert "contingency_table_headers" in contingency_analyzer.aggregated_data
+        headers = contingency_analyzer.aggregated_data["contingency_table_headers"]
+        assert isinstance(headers, dict)
+        assert "row_labels" in headers
+        assert "col_labels" in headers
+        assert "header" in headers
+        # Verify header contains expected categorical columns
+        assert headers["header"] == "gender,race,n"
+        # Verify row and column labels match expected values
+        assert set(headers["row_labels"]) == {"Male", "Female"}
+        assert set(headers["col_labels"]) == {"White", "Black", "Asian"}
     
     
     def test_contingency_table_with_csv_format(self, contingency_analyzer):
@@ -169,6 +182,19 @@ class TestContingencyTableAnalysis:
             expected_col_sums = {97, 51, 27}
             actual_col_sums = set(col_sums)
             assert actual_col_sums == expected_col_sums
+            
+            # Check that headers are created
+            assert "contingency_table_headers" in contingency_analyzer.aggregated_data
+            headers = contingency_analyzer.aggregated_data["contingency_table_headers"]
+            assert isinstance(headers, dict)
+            assert "row_labels" in headers
+            assert "col_labels" in headers
+            assert "header" in headers
+            # Verify header contains expected categorical columns (CSV format uses "count")
+            assert headers["header"] == "gender,race,count"
+            # Verify row and column labels match expected values
+            assert set(headers["row_labels"]) == {"Male", "Female"}
+            assert set(headers["col_labels"]) == {"White", "Black", "Asian"}
     
     def test_contingency_table_edge_cases(self, contingency_analyzer):
         """Test contingency table with edge cases."""
