@@ -400,15 +400,14 @@ if __name__ == "__main__":
     
     # Will use TRE_FX_PROJECT from environment and TRE_FX_TOKEN from environment
     engine = AnalysisEngine() 
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
-    sql_table = os.getenv("SQL_TABLE", "measurement")
+    sql_schema = os.getenv("SQL_SCHEMA", "public.measurement")
     
     # Example: Run variance analysis first, then mean analysis on the same data
-    query_template = Template("""SELECT value_as_number FROM $schema.$table 
+    query_template = Template("""SELECT value_as_number FROM $schema 
     WHERE measurement_concept_id = 21490742
     AND value_as_number IS NOT NULL""")
     
-    user_query = query_template.safe_substitute(schema=sql_schema, table=sql_table)
+    user_query = query_template.safe_substitute(schema=sql_schema)
     
     print("Running mean analysis...")
     mean_result = engine.run_analysis(
