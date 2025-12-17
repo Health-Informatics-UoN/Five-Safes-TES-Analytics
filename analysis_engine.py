@@ -10,6 +10,7 @@ from tes_client import TESClient
 from tes_client import get_status_description
 from minio_client import MinIOClient
 import polling
+from string import Template
 
 # Load environment variables from .env file
 load_dotenv()
@@ -394,16 +395,19 @@ WHERE p.race_concept_id IN (38003574, 38003584)"""
     
     return engine.run_analysis("chi_squared_scipy", user_query, tres, group_columns="gender_name, race_name")
 
-
+# Example usage
 if __name__ == "__main__":
-    # Example usage
-
-    engine = AnalysisEngine()  # Will use TRE_FX_PROJECT from environment and TRE_FX_TOKEN from environment
+    
+    # Will use TRE_FX_PROJECT from environment and TRE_FX_TOKEN from environment
+    engine = AnalysisEngine() 
+    sql_schema = os.getenv("SQL_SCHEMA", "public")
     
     # Example: Run variance analysis first, then mean analysis on the same data
-    user_query = """SELECT value_as_number FROM public.measurement 
-WHERE measurement_concept_id = 21490742
-AND value_as_number IS NOT NULL"""
+    query_template = Template("""SELECT value_as_number FROM $schema.measurement 
+    WHERE measurement_concept_id = 21490742
+    AND value_as_number IS NOT NULL""")
+    
+    user_query = query_template.safe_substitute(schema=sql_schema)
     
     print("Running mean analysis...")
     mean_result = engine.run_analysis(
@@ -412,52 +416,9 @@ AND value_as_number IS NOT NULL"""
         user_query=user_query,
     )
     
-    print(f"Mean analysis result: {mean_result['result']}")
-    
-    
     # Show what aggregated data we have stored
+    print(f"Mean analysis result: {mean_result['result']}")
     print(f"Stored aggregated data: {engine.aggregated_data}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     # Check what other analyses we can run on this data
