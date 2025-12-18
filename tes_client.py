@@ -393,7 +393,7 @@ class TESClient:
             name (str): Name of the analysis submission
             description (str): Description of the analysis task
             tres (list): List of TREs to run the analysis on
-            project (str): Project name (defaults to TRE_FX_PROJECT env var)
+            project (str): Project name (defaults to 5STES_PROJECT env var)
             output_bucket (str): S3 bucket name for outputs (defaults to MINIO_OUTPUT_BUCKET env var)
             output_path (str): Path for output files
             image (str): Docker image to use
@@ -405,9 +405,9 @@ class TESClient:
             tuple[dict, int]: Submission template configuration and number of TREs
         """
         # Use environment variables for project and output bucket if not provided
-        project = project or os.getenv('TRE_FX_PROJECT')
+        project = project or os.getenv('5STES_PROJECT')
         if not project:
-            raise ValueError("TRE_FX_PROJECT environment variable is required when project parameter is not provided")
+            raise ValueError("5STES_PROJECT environment variable is required when project parameter is not provided")
         
         output_bucket = output_bucket or os.getenv('MINIO_OUTPUT_BUCKET')
         if not output_bucket:
