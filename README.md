@@ -22,8 +22,8 @@ All variables in `env.example` are **required**. Here's what you need to configu
 
 ```bash
 # Authentication
-TRE_FX_TOKEN=your_jwt_token_here
-TRE_FX_PROJECT=your_project_name
+5STES_TOKEN=your_jwt_token_here
+5STES_PROJECT=your_project_name
 
 # TES (Task Execution Service) Configuration
 TES_BASE_URL=http://your-tes-endpoint:5034/v1/tasks

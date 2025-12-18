@@ -27,19 +27,19 @@ class AnalysisEngine:
         
         Args:
             token (str): Authentication token for TRE-FX services
-            project (str): Project name for TES tasks (defaults to TRE_FX_PROJECT env var)
+            project (str): Project name for TES tasks (defaults to 5STES_PROJECT env var)
         """
         if token is None:
-            token = os.getenv('TRE_FX_TOKEN')
+            token = os.getenv('5STES_TOKEN')
             if not token:
-                raise ValueError("TRE_FX_TOKEN environment variable is required when token parameter is not provided")
+                raise ValueError("5STES_TOKEN environment variable is required when token parameter is not provided")
         self.token = token
         
         # Set project from environment variable if not provided
         if project is None:
-            project = os.getenv('TRE_FX_PROJECT')
+            project = os.getenv('5STES_PROJECT')
             if not project:
-                raise ValueError("TRE_FX_PROJECT environment variable is required when project parameter is not provided")
+                raise ValueError("5STES_PROJECT environment variable is required when project parameter is not provided")
         
         self.project = project
         self.data_processor = DataProcessor()
@@ -77,9 +77,9 @@ class AnalysisEngine:
             if not bucket:
                 raise ValueError("MINIO_OUTPUT_BUCKET environment variable is required when bucket parameter is not provided")
         if tres is None:
-            tres_env = os.getenv('TRE_FX_TRES')
+            tres_env = os.getenv('5STES_TRES')
             if not tres_env:
-                raise ValueError("TRE_FX_TRES environment variable is required when tres parameter is not provided")
+                raise ValueError("5STES_TRES environment variable is required when tres parameter is not provided")
             # Parse comma-separated TRE names into a list
             tres = [tre.strip() for tre in tres_env.split(',') if tre.strip()]
 
@@ -398,7 +398,7 @@ WHERE p.race_concept_id IN (38003574, 38003584)"""
 # Example usage
 if __name__ == "__main__":
     
-    # Will use TRE_FX_PROJECT from environment and TRE_FX_TOKEN from environment
+    # Will use 5STES_PROJECT from environment and 5STES_TOKEN from environment
     engine = AnalysisEngine() 
     sql_schema = os.getenv("SQL_SCHEMA", "public")
     
