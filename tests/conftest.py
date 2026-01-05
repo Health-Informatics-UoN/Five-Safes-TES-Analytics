@@ -21,8 +21,8 @@ def setup_test_environment():
     os.environ['MINIO_SECRET_KEY'] = 'test-secret-key'
     os.environ['MINIO_OUTPUT_BUCKET'] = 'test-output-bucket'
     os.environ['MINIO_STS_ENDPOINT'] = 'http://test-sts-endpoint.com'
-    os.environ['TRE_FX_TOKEN'] = 'test-token'
-    os.environ['TRE_FX_PROJECT'] = 'test-project'
+    os.environ['5STES_TOKEN'] = 'test-token'
+    os.environ['5STES_PROJECT'] = 'test-project'
     
     yield
     
@@ -31,7 +31,7 @@ def setup_test_environment():
         'TES_BASE_URL', 'TES_DOCKER_IMAGE', 'DB_HOST', 'DB_PORT', 
         'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME', 'MINIO_ENDPOINT',
         'MINIO_ACCESS_KEY', 'MINIO_SECRET_KEY', 'MINIO_OUTPUT_BUCKET',
-        'MINIO_STS_ENDPOINT', 'TRE_FX_TOKEN', 'TRE_FX_PROJECT'
+        'MINIO_STS_ENDPOINT', '5STES_TOKEN', '5STES_PROJECT'
     ]
     for var in test_vars:
         if var in os.environ:

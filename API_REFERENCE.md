@@ -19,8 +19,8 @@ The system uses environment variables for configuration. See `env.example` for a
 
 ```bash
 # Required environment variables:
-TRE_FX_TOKEN=your_jwt_token_here
-TRE_FX_PROJECT=your_project_name
+5STES_TOKEN=your_jwt_token_here
+5STES_PROJECT=your_project_name
 TES_BASE_URL=http://your-tes-endpoint:5034/v1/tasks
 TES_DOCKER_IMAGE=harbor.your-registry.com/your-image:tag
 
@@ -48,7 +48,7 @@ AnalysisEngine(token: str, project: str = None)
 
 **Parameters:**
 - `token`: Authentication token for TRE-FX services (required)
-- `project`: Project name for TES tasks (defaults to TRE_FX_PROJECT environment variable)
+- `project`: Project name for TES tasks (defaults to 5STES_PROJECT environment variable)
 
 ### Methods
 
