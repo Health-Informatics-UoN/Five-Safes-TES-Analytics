@@ -1,7 +1,9 @@
+import tes
 import json
 import os
 import requests
-from typing import Dict, Any, List, Tuple
+from abc import ABC, abstractmethod
+from typing import Dict, Any, List, Tuple, TypedDict, Optional, Literal, Union
 from dotenv import load_dotenv
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -205,7 +207,19 @@ def get_status_code(description: str) -> int:
     return -1
 
 
-class TESClient:
+
+### there's already executor, input and output classes in tes.py
+
+#@attrs
+class Tags(TypedDict):
+    """Type definition for tags dictionary, requiring 'Project' and 'tres' keys."""
+    Project: str
+    tres: list[str]
+
+
+
+
+class TESClient(ABC):
     """
     Handles TES (Task Execution Service) operations including task generation and submission.
     """
@@ -218,7 +232,7 @@ class TESClient:
                  default_db_config: Dict[str, str] = None,
                  default_db_port: str = None):
         """
-        Initialize the TES client.
+        Initialize the TES client. These parameters are typically set in the environment variables, and typically represent properties of the submission, not the task.
         
         Args:
             base_url (str): Base URL for the TES API
@@ -246,6 +260,8 @@ class TESClient:
         else:
             self.submission_url = submission_url
         
+        ## this assumes that the docker image is the same for all tasks - could change the format like with tres to allow multiple with some separator
+        ## but then we'd have to have some way to select the image for the task
         self.default_image = default_image or os.getenv('TES_DOCKER_IMAGE')
         if not self.default_image:
             raise ValueError("TES_DOCKER_IMAGE environment variable is required")
@@ -281,6 +297,25 @@ class TESClient:
         else:
             self.default_db_config = default_db_config
     
+        self.set_tags()
+        self.task = None
+
+
+    def set_tags(self) -> Tags:
+        """
+        Set the tags for a TES task. Tags are a class variable that is set when the client is initialized, but will also return the tags for consistency.
+        """
+        tres_env = os.getenv('TRE_FX_TRES')
+        if not tres_env:
+            raise ValueError("TRE_FX_TRES environment variable is required")
+        tags = Tags({
+            "Project": os.getenv('TRE_FX_PROJECT'), 
+            "tres": [tre.strip() for tre in tres_env.split('|') if tre.strip()]
+            })
+        self.tags = tags
+        return tags
+
+
     
     def _build_api_url(self, base_url: str, endpoint: str, query_params: Dict[str, str] = None) -> str:
         """
@@ -305,7 +340,37 @@ class TESClient:
             url = f"{url}?{query_string}"
         
         return url
-    
+
+########################################################
+    @abstractmethod
+    def set_inputs(self, *args, **kwargs) -> tes.Input:
+        """
+        Set the inputs for a TES task.
+        Subclasses can define their own parameters.
+        """
+        pass
+
+    @abstractmethod
+    def set_outputs(self, *args, **kwargs) -> tes.Output:
+        """
+        Set the outputs for a TES task.
+        Subclasses can define their own parameters.
+        Examples:
+        - set_outputs() -> List[Output]
+        - set_outputs(name: str, output_path: str) -> Output
+        """
+        pass
+
+    @abstractmethod
+    def set_executors(self, *args, **kwargs) -> Union[tes.Executor, List[tes.Executor]]:
+        """
+        Set the executors for a TES task.
+        Subclasses can define their own parameters.
+        """
+        pass
+########################################################
+
+    ### refactor this to use the pytes classes
     def generate_tes_task(self,
                          query: str,
                          name: str = "analysis test",
@@ -361,7 +426,43 @@ class TESClient:
             ]
         }
         return task
+
+    def create_tes_message(self, name: str = "analysis test") -> tes.Task:
+        """
+        Create a TES message JSON configuration.
+        
+        Args:
+            name: str
+            inputs: tes.Input
+            outputs: tes.Output
+            executors: Union[tes.Executor, List[tes.Executor]] - Single executor or list of executors
+        """
+
+
+            
+
+        self.task = tes.Task(
+            name= name,
+            inputs= self.inputs,
+            outputs= self.outputs,
+            executors= self.executors
+        )
+        return self.task
     
+    def create_FiveSAFES_TES_message(self, task: tes.Task= None) -> tes.Task:
+        """
+        Create a 5SAFE TES message JSON configuration.
+        """
+        if task is None and self.task is None:
+            task = self.create_tes_message()
+        elif task is None:
+            task = self.task
+        if task.tags is None:
+            task.tags = {}
+        task.tags.update(self.tags)
+        self.task = task
+        return task
+
     def save_tes_task(self, task: Dict[str, Any], output_file: str):
         """
         Save the TES task configuration to a JSON file.
@@ -381,6 +482,7 @@ class TESClient:
         project: str = None,
         output_bucket: str = None,
         output_path: str = "/outputs",
+        executors: Optional[List[Dict[str, Any]]] = None,
         image: str = None,
         db_config: dict = None,
         query: str = None,
@@ -396,6 +498,7 @@ class TESClient:
             project (str): Project name (defaults to 5STES_PROJECT env var)
             output_bucket (str): S3 bucket name for outputs (defaults to MINIO_OUTPUT_BUCKET env var)
             output_path (str): Path for output files
+            executors (Optional[List[Dict[str, Any]]]): List of executor dictionaries to use (old format, creates plain dicts)
             image (str): Docker image to use
             db_config (dict): Database configuration
             query (str): SQL query to execute
@@ -432,24 +535,26 @@ class TESClient:
         # Output filename without extension (will be .json or .csv based on output-format)
         output_filename = f"{output_path}/output"
         
-        executors = [{
-            "image": image,
-            "command": [
-                f"--user-query={query}",
-                f"--analysis={analysis_type}",
-                f"--db-connection={db_connection_string}",
-                f"--output-filename={output_filename}",
-                "--output-format=json"
-            ],
-            "env": {
-                "DATASOURCE_DB_DATABASE": db_config['name'],
-                "DATASOURCE_DB_HOST": db_config['host'],
-                "DATASOURCE_DB_PASSWORD": db_config['password'],
-                "DATASOURCE_DB_USERNAME": db_config['username']
-            },
-            "workdir": "/app"
-        }]
-        
+        if executors is None:
+            executor: Dict[str, Any] = {
+                "image": image,
+                "command": [
+                    f"--user-query={query}",
+                    f"--analysis={analysis_type}",
+                    f"--db-connection={db_connection_string}",
+                    f"--output-filename={output_filename}",
+                    "--output-format=json"
+                ],
+                "env": {
+                    "DATASOURCE_DB_DATABASE": db_config['name'],
+                    "DATASOURCE_DB_HOST": db_config['host'],
+                    "DATASOURCE_DB_PASSWORD": db_config['password'],
+                    "DATASOURCE_DB_USERNAME": db_config['username']
+                },
+                "workdir": "/app"
+            }
+            executors = [executor]
+
         template = {
             "id": None,
             "name": name,

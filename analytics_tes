@@ -1,0 +1,70 @@
+import tes_client
+import tes
+from tes import Input, Output, Executor
+from typing import List, Dict, Union
+
+class AnalyticsTES(tes_client.TESClient):
+
+   #### this section will be implemented for each type of task using the pytes classes. Note that many of these fields are set in the submission layer after submission.
+    def set_inputs(self) -> tes.Input:
+        """
+        Set the inputs for a TES task.
+        """
+        self.inputs = [tes.Input()]
+        return self.inputs
+
+### is name required? Or even overwritten?
+    def set_outputs(self, name: str, output_path: str, output_type: str = "DIRECTORY") -> tes.Output:
+        """
+        Set the outputs for a TES task.
+        """
+        self.outputs = [tes.Output(path=output_path, type=output_type)]
+        return self.outputs
+
+    def set_env(self) -> Dict[str, str]:
+        """
+        Set the environment variables for a TES task.
+        """
+        self.env = {
+            "DATASOURCE_DB_DATABASE": self.default_db_config['name'],
+            "DATASOURCE_DB_HOST": self.default_db_config['host'],
+            "DATASOURCE_DB_PASSWORD": self.default_db_config['password'],
+            "DATASOURCE_DB_USERNAME": self.default_db_config['username']
+        }
+        return self.env
+
+    def set_command(self, query: str, analysis_type: str, output_path: str, output_format: str = "json") -> List[str]:
+        """
+        Set the command for a TES task.
+        """
+
+        connection_string = f"=Host={self.default_db_config['host']}:{self.default_db_config['port']};Username={self.default_db_config['username']};Password={self.default_db_config['password']};Database={self.default_db_config['name']}"
+        self.command = [
+            f"--user-query={query}",
+            f"--analysis={analysis_type}",
+            f"--db-connection={connection_string}",
+            f"--output-filename={output_path}/output",
+            f"--output-format={output_format}"
+        ]
+        return self.command
+
+    def set_executors(self, query, analysis_type, workdir = "/app", output_path="/outputs", output_format="json") -> Union[tes.Executor, List[tes.Executor]]:
+        """
+        Set the executors for a TES task.
+        """
+        self.executors = [tes.Executor(image=self.default_image, 
+        command=self.set_command(query, analysis_type, output_path, output_format), 
+        env=self.set_env(), 
+        workdir=workdir)]
+        return self.executors
+
+if __name__ == "__main__":
+    analytics_tes = AnalyticsTES()
+    analytics_tes.set_inputs()
+    analytics_tes.set_outputs(name="test", output_path="/outputs", output_type="DIRECTORY")
+    query = """SELECT value_as_number FROM public.measurement 
+WHERE measurement_concept_id = 21490742
+AND value_as_number IS NOT NULL"""
+    
+    analytics_tes.set_executors(query=query, analysis_type="mean", workdir="/app", output_path="/outputs", output_format="json")
+    pass

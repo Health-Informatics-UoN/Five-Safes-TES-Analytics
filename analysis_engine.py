@@ -1,6 +1,8 @@
 import json
 import time
 import os
+import tes
+from analytics_tes import AnalyticsTES
 from typing import List, Dict, Any, Optional, Union
 import numpy as np
 from dotenv import load_dotenv
@@ -29,6 +31,8 @@ class AnalysisEngine:
             token (str): Authentication token for TRE-FX services
             project (str): Project name for TES tasks (defaults to 5STES_PROJECT env var)
         """
+        self.analytics_tes = AnalyticsTES()
+        
         if token is None:
             token = os.getenv('5STES_TOKEN')
             if not token:
@@ -39,7 +43,43 @@ class AnalysisEngine:
         if project is None:
             project = os.getenv('5STES_PROJECT')
             if not project:
-                raise ValueError("5STES_PROJECT environment variable is required when project parameter is not provided")
+                raise ValueError("TRE_FX_PROJECT environment variable is required when project parameter is not provided")
+
+
+        default_db_port = os.getenv('DB_PORT')
+        if not default_db_port:
+            raise ValueError("DB_PORT environment variable is required")
+        
+        db_host = os.getenv('DB_HOST')
+        self.db_host = db_host
+        if not db_host:
+            raise ValueError("DB_HOST environment variable is required")
+            
+        db_username = os.getenv('DB_USERNAME')
+        self.db_username = db_username
+        if not db_username:
+            raise ValueError("DB_USERNAME environment variable is required")
+            
+        ddb_password = os.getenv('DB_PASSWORD')
+        self.db_password = db_password
+        if not db_password:
+            raise ValueError("DB_PASSWORD environment variable is required")
+            
+        db_name = os.getenv('DB_NAME')
+        self.db_name = db_name
+        if not db_name:
+            raise ValueError("DB_NAME environment variable is required")
+            
+        self.default_db_config = {
+            "host": db_host,
+            "username": db_username,
+            "password": db_password,
+            "name": db_name,
+            "port": default_db_port
+        }
+        else:
+            self.default_db_config = default_db_config
+
         
         self.project = project
         self.data_processor = DataProcessor()
@@ -100,6 +140,37 @@ class AnalysisEngine:
                 raise ValueError(f"Analysis type '{analysis_type}' not compatible with existing data. "
                                f"Available analyses: {compatible_analyses}")
         
+        
+        # Construct database connection string in PostgreSQL format
+        self.db_connection_string = f"postgresql://{self.default_db_config['username']}:{self.default_db_config['password']}@{self.default_db_config['host']}:{self.default_db_config['port']}/{self.default_db_config['name']}"
+        
+        # Output filename without extension (will be .json or .csv based on output-format)
+        self.output_filename = f"{self.output_path}/output"
+        
+
+        ### need to define this elsewhere, so the calling function can use it with only changing the query and analysis type
+        ### any time after init, the class vars will exist, so we can have a class function to create this with just passing in user_query and analysis_type
+        ### multiple executors can be created if needed, but this analysis engine only deals with analysis
+        ### executor list can be passed in to run analysis - but is any of this necessary, if this is purely for analysis?
+        executor: tes_client.Executor = {
+            "image": self.image,
+            "command": [
+                f"--user-query={user_query}",
+                f"--analysis={analysis_type}",
+                f"--db-connection={self.db_connection_string}",
+                f"--output-filename={self.output_filename}",
+                "--output-format=json"
+            ],
+            "env": {
+                "DATASOURCE_DB_DATABASE": self.default_db_config['name'],
+                "DATASOURCE_DB_HOST": self.default_db_config['host'],
+                "DATASOURCE_DB_PASSWORD": self.default_db_config['password'],
+                "DATASOURCE_DB_USERNAME": self.default_db_config['username']
+            },
+            "workdir": "/app"
+        }
+        
+
         # Original logic for running analysis on new data
         try:
             
@@ -111,6 +182,19 @@ class AnalysisEngine:
                 analysis_type=analysis_type,
                 tres=tres,
                 project=self.project
+
+                name: str = task_name,
+                description: str = description,
+                tres: list = tres,
+                project: str = self.project,
+                output_bucket: str = self.output_bucket,
+                output_path: str = self.output_path #"/outputs",
+                executors: List[Executor] = [executor],
+                image: str = None,
+                db_config: dict = None,
+                query: str = user_query,
+                analysis_type: str = analysis_type
+
             )
             
             result = self.tes_client.submit_task(submission_task, self.token)
@@ -419,6 +503,49 @@ if __name__ == "__main__":
     # Show what aggregated data we have stored
     print(f"Mean analysis result: {mean_result['result']}")
     print(f"Stored aggregated data: {engine.aggregated_data}")
+
+
+
+
+
+
+### for bunny, the command to run is:
+# New method - inline JSON
+# bunny --body-json '{"code":"DEMOGRAPHICS","analysis":"DISTRIBUTION","uuid":"123","collection":"test","owner":"me"}' --output results.json
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     # Check what other analyses we can run on this data
