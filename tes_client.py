@@ -212,10 +212,16 @@ def get_status_code(description: str) -> int:
 
 #@attrs
 class Tags(TypedDict):
-    """Type definition for tags dictionary, requiring 'Project' and 'tres' keys."""
+    """Type definition for tags dictionary, requiring 'Project' and 'tres' keys.
+    Note: tres is stored as a pipe-separated string for py-tes compatibility."""
     Project: str
     tres: list[str]
 
+    def to_string(self) -> str:
+        """
+        Convert the tags dictionary to a pipe-separated string.
+        """
+        return "|".join([f"{key}:{value}" for key, value in self.items()])
 
 
 
@@ -293,6 +299,7 @@ class TESClient(ABC):
                 "password": db_password,
                 "name": db_name,
                 "port": default_db_port
+                "schema": os.getenv('DB_SCHEMA')
             }
         else:
             self.default_db_config = default_db_config
@@ -301,16 +308,33 @@ class TESClient(ABC):
         self.task = None
 
 
-    def set_tags(self) -> Tags:
+    def set_tags(self, tres: List[str] = None) -> Tags:
         """
         Set the tags for a TES task. Tags are a class variable that is set when the client is initialized, but will also return the tags for consistency.
         """
-        tres_env = os.getenv('TRE_FX_TRES')
-        if not tres_env:
-            raise ValueError("TRE_FX_TRES environment variable is required")
+        
+        if tres is None:
+            tres = os.getenv('5STES_TRES')
+            if not tres:
+                raise ValueError("5STES_TRES environment variable is required when tres parameter is not provided")
+        
+        # Convert tres to list format for storage
+        if isinstance(tres, list):
+            tres_list = tres
+        elif isinstance(tres, str):
+            # If it's a string, parse it (could be comma or pipe separated)
+            if ',' in tres:
+                tres_list = [tre.strip() for tre in tres.split(',') if tre.strip()]
+            elif '|' in tres:
+                tres_list = [tre.strip() for tre in tres.split('|') if tre.strip()]
+            else:
+                tres_list = [tres.strip()] if tres.strip() else []
+        else:
+            raise ValueError(f"tres must be a list or string, got {type(tres)}")
+        
         tags = Tags({
-            "Project": os.getenv('TRE_FX_PROJECT'), 
-            "tres": [tre.strip() for tre in tres_env.split('|') if tre.strip()]
+            "Project": os.getenv('5STES_PROJECT'), 
+            "tres": tres_list  # Store as list
             })
         self.tags = tags
         return tags
@@ -368,6 +392,7 @@ class TESClient(ABC):
         Subclasses can define their own parameters.
         """
         pass
+    
 ########################################################
 
     ### refactor this to use the pytes classes
@@ -459,7 +484,12 @@ class TESClient(ABC):
             task = self.task
         if task.tags is None:
             task.tags = {}
-        task.tags.update(self.tags)
+        # Convert tres list to pipe-separated string for py-tes compatibility
+        tags_for_task = {
+            "Project": self.tags["Project"],
+            "tres": "|".join(self.tags["tres"]) if isinstance(self.tags["tres"], list) else self.tags["tres"]
+        }
+        task.tags.update(tags_for_task)
         self.task = task
         return task
 
@@ -495,7 +525,7 @@ class TESClient(ABC):
             name (str): Name of the analysis submission
             description (str): Description of the analysis task
             tres (list): List of TREs to run the analysis on
-            project (str): Project name (defaults to 5STES_PROJECT env var)
+            project (str): Project name (defaults to TRE_FX_PROJECT env var)
             output_bucket (str): S3 bucket name for outputs (defaults to MINIO_OUTPUT_BUCKET env var)
             output_path (str): Path for output files
             executors (Optional[List[Dict[str, Any]]]): List of executor dictionaries to use (old format, creates plain dicts)
@@ -508,9 +538,9 @@ class TESClient(ABC):
             tuple[dict, int]: Submission template configuration and number of TREs
         """
         # Use environment variables for project and output bucket if not provided
-        project = project or os.getenv('5STES_PROJECT')
+        project = project or os.getenv('TRE_FX_PROJECT')
         if not project:
-            raise ValueError("5STES_PROJECT environment variable is required when project parameter is not provided")
+            raise ValueError("TRE_FX_PROJECT environment variable is required when project parameter is not provided")
         
         output_bucket = output_bucket or os.getenv('MINIO_OUTPUT_BUCKET')
         if not output_bucket:
@@ -615,12 +645,12 @@ class TESClient(ABC):
         
         return curl_command
     
-    def submit_task(self, template: Dict[str, Any], token: str) -> Dict[str, Any]:
+    def submit_task(self, template: Union[Dict[str, Any], tes.Task], token: str) -> Dict[str, Any]:
         """
         Submit a TES task using the requests library.
         
         Args:
-            template (Dict[str, Any]): The TES task template
+            template (Union[Dict[str, Any], tes.Task]): The TES task template or task object
             token (str): Authentication token
             
         Returns:
@@ -629,6 +659,8 @@ class TESClient(ABC):
         Raises:
             requests.exceptions.RequestException: If the request fails
         """
+        if isinstance(template, tes.Task):
+            template = template.to_dict()
         headers = {
             'accept': 'text/plain',
             'Authorization': f'Bearer {token}',

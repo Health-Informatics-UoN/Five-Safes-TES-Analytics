@@ -3,7 +3,7 @@ import time
 import os
 import tes
 from analytics_tes import AnalyticsTES
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 import numpy as np
 from dotenv import load_dotenv
 from data_processor import DataProcessor
@@ -44,42 +44,6 @@ class AnalysisEngine:
             project = os.getenv('5STES_PROJECT')
             if not project:
                 raise ValueError("TRE_FX_PROJECT environment variable is required when project parameter is not provided")
-
-
-        default_db_port = os.getenv('DB_PORT')
-        if not default_db_port:
-            raise ValueError("DB_PORT environment variable is required")
-        
-        db_host = os.getenv('DB_HOST')
-        self.db_host = db_host
-        if not db_host:
-            raise ValueError("DB_HOST environment variable is required")
-            
-        db_username = os.getenv('DB_USERNAME')
-        self.db_username = db_username
-        if not db_username:
-            raise ValueError("DB_USERNAME environment variable is required")
-            
-        ddb_password = os.getenv('DB_PASSWORD')
-        self.db_password = db_password
-        if not db_password:
-            raise ValueError("DB_PASSWORD environment variable is required")
-            
-        db_name = os.getenv('DB_NAME')
-        self.db_name = db_name
-        if not db_name:
-            raise ValueError("DB_NAME environment variable is required")
-            
-        self.default_db_config = {
-            "host": db_host,
-            "username": db_username,
-            "password": db_password,
-            "name": db_name,
-            "port": default_db_port
-        }
-        else:
-            self.default_db_config = default_db_config
-
         
         self.project = project
         self.data_processor = DataProcessor()
@@ -88,6 +52,74 @@ class AnalysisEngine:
         self.minio_client = MinIOClient(token)
         self.aggregated_data = {}  # Centralized dict to store all aggregated data
         
+    def parse_tres(self, tres: str) -> List[str]:
+        """
+        Parse the TREs from the environment variable.
+        """
+        return [tre.strip() for tre in tres.split(',') if tre.strip()]
+    
+    def setup_analysis(self, analysis_type: str, task_name: str = None, bucket: str = None, tres: List[str] = None) -> Tuple[str, str, List[str]]:
+        """
+        Set up common analysis parameters.
+        
+        Args:
+            analysis_type (str): Type of analysis to perform
+            task_name (str, optional): Name for the TES task
+            bucket (str, optional): MinIO bucket for outputs
+            tres (List[str], optional): List of TREs to run analysis on
+            
+        Returns:
+            Tuple[str, str, List[str]]: (task_name, bucket, tres)
+        """
+        # Set default task name based on analysis type if not provided
+        if task_name is None:
+            task_name = f"analysis {analysis_type}"
+        
+        # Set default bucket from environment variable if not provided
+        if bucket is None:
+            bucket = os.getenv('MINIO_OUTPUT_BUCKET')
+            if not bucket:
+                raise ValueError("MINIO_OUTPUT_BUCKET environment variable is required when bucket parameter is not provided")
+        
+        if tres is None:
+            tres_env = os.getenv('5STES_TRES')
+            if not tres_env:
+                raise ValueError("5STES_TRES environment variable is required when tres parameter is not provided")
+            tres = self.parse_tres(tres_env)
+        
+        self.tres = tres
+        return task_name, bucket, tres
+    
+    def check_analysis_on_existing_data(self, analysis_type: str, user_query: str = None, tres: List[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Check if analysis should run on existing data, and run it if so.
+        
+        Args:
+            analysis_type (str): Type of analysis to perform
+            user_query (str, optional): User's data selection query
+            tres (List[str], optional): List of TREs to run analysis on
+            
+        Returns:
+            Optional[Dict[str, Any]]: Analysis results if running on existing data, None otherwise
+        """
+        # Check if user is trying to run analysis on existing data
+        if user_query is None and tres is None:
+            # User wants to run analysis on existing aggregated data
+            compatible_analyses = self.get_compatible_analyses()
+            if analysis_type in compatible_analyses:
+                print(f"Running {analysis_type} analysis on existing data...")
+                result = self.run_additional_analysis(analysis_type)
+                return {
+                    'analysis_type': analysis_type,
+                    'result': result,
+                    'data_source': 'existing_aggregated_data',
+                    'compatible_analyses': compatible_analyses
+                }
+            else:
+                raise ValueError(f"Analysis type '{analysis_type}' not compatible with existing data. "
+                               f"Available analyses: {compatible_analyses}")
+        return None
+    
     def run_analysis(self, 
                     analysis_type: str, 
                     user_query: str = None,
@@ -107,108 +139,29 @@ class AnalysisEngine:
         Returns:
             Dict[str, Any]: Analysis results
         """
-        # Set default task name based on analysis type if not provided
-        if task_name is None:
-            task_name = f"analysis {analysis_type}"
-        
-        # Set default bucket from environment variable if not provided
-        if bucket is None:
-            bucket = os.getenv('MINIO_OUTPUT_BUCKET')
-            if not bucket:
-                raise ValueError("MINIO_OUTPUT_BUCKET environment variable is required when bucket parameter is not provided")
-        if tres is None:
-            tres_env = os.getenv('5STES_TRES')
-            if not tres_env:
-                raise ValueError("5STES_TRES environment variable is required when tres parameter is not provided")
-            # Parse comma-separated TRE names into a list
-            tres = [tre.strip() for tre in tres_env.split(',') if tre.strip()]
 
-        # Check if user is trying to run analysis on existing data
-        if user_query is None and tres is None:
-            # User wants to run analysis on existing aggregated data
-            compatible_analyses = self.get_compatible_analyses()
-            if analysis_type in compatible_analyses:
-                print(f"Running {analysis_type} analysis on existing data...")
-                result = self.run_additional_analysis(analysis_type)
-                return {
-                    'analysis_type': analysis_type,
-                    'result': result,
-                    'data_source': 'existing_aggregated_data',
-                    'compatible_analyses': compatible_analyses
-                }
-            else:
-                raise ValueError(f"Analysis type '{analysis_type}' not compatible with existing data. "
-                               f"Available analyses: {compatible_analyses}")
+        task_name, bucket, tres = self.setup_analysis(analysis_type, task_name, bucket, tres)
         
+        # Check if we should run on existing data (returns early if so)
+        existing_data_result = self.check_analysis_on_existing_data(analysis_type, user_query, tres)
+        if existing_data_result is not None:
+            return existing_data_result
         
-        # Construct database connection string in PostgreSQL format
-        self.db_connection_string = f"postgresql://{self.default_db_config['username']}:{self.default_db_config['password']}@{self.default_db_config['host']}:{self.default_db_config['port']}/{self.default_db_config['name']}"
-        
-        # Output filename without extension (will be .json or .csv based on output-format)
-        self.output_filename = f"{self.output_path}/output"
-        
+        ### create the TES message for the analysis
+        analytics_tes = AnalyticsTES()
+        analytics_tes.set_tes_messages(query=user_query, analysis_type=analysis_type, name=task_name, output_format="json")
+        analytics_tes.set_tags(tres=self.tres)
+        five_Safes_TES_message = analytics_tes.create_FiveSAFES_TES_message()
+                
 
-        ### need to define this elsewhere, so the calling function can use it with only changing the query and analysis type
-        ### any time after init, the class vars will exist, so we can have a class function to create this with just passing in user_query and analysis_type
-        ### multiple executors can be created if needed, but this analysis engine only deals with analysis
-        ### executor list can be passed in to run analysis - but is any of this necessary, if this is purely for analysis?
-        executor: tes_client.Executor = {
-            "image": self.image,
-            "command": [
-                f"--user-query={user_query}",
-                f"--analysis={analysis_type}",
-                f"--db-connection={self.db_connection_string}",
-                f"--output-filename={self.output_filename}",
-                "--output-format=json"
-            ],
-            "env": {
-                "DATASOURCE_DB_DATABASE": self.default_db_config['name'],
-                "DATASOURCE_DB_HOST": self.default_db_config['host'],
-                "DATASOURCE_DB_PASSWORD": self.default_db_config['password'],
-                "DATASOURCE_DB_USERNAME": self.default_db_config['username']
-            },
-            "workdir": "/app"
-        }
-        
-
-        # Original logic for running analysis on new data
+        # Submit task and collect results (common workflow)
         try:
-            
-            # Generate and submit TES task
-            print(f"Submitting {analysis_type} analysis to {len(tres)} TREs...")
-            submission_task, n_results = self.tes_client.generate_submission_template(
-                name=task_name,
-                query=user_query,
-                analysis_type=analysis_type,
-                tres=tres,
-                project=self.project
-
-                name: str = task_name,
-                description: str = description,
-                tres: list = tres,
-                project: str = self.project,
-                output_bucket: str = self.output_bucket,
-                output_path: str = self.output_path #"/outputs",
-                executors: List[Executor] = [executor],
-                image: str = None,
-                db_config: dict = None,
-                query: str = user_query,
-                analysis_type: str = analysis_type
-
+            task_id, data = self._submit_and_collect_results(
+                five_Safes_TES_message,
+                bucket,
+                output_format="json",
+                submit_message=f"Submitting {analysis_type} analysis to {len(self.tres)} TREs..."
             )
-            
-            result = self.tes_client.submit_task(submission_task, self.token)
-            
-            task_id = result['id']
-            print(f"Task ID: {task_id}")
-            results_paths = [f"{int(task_id) + i + 1}/output.json" for i in range(n_results)]
-            
-
-
-           
-            ## use polling engine to collect results
-            polling_engine = polling.Polling(self.tes_client, self.minio_client, task_id)
-            data = polling_engine.poll_results(results_paths, bucket, n_results, polling_interval=10) #could be a list of dict if json data
 
             # Process and analyze data
             print("Processing and analyzing data...")
@@ -232,7 +185,42 @@ class AnalysisEngine:
             print(f"Analysis failed: {str(e)}")
             raise
     
-
+    def _submit_and_collect_results(self,
+                                    tes_message: tes.Task,
+                                    bucket: str,
+                                    output_format: str = "json",
+                                    submit_message: str = None) -> Tuple[str, List[Dict[str, Any]]]:
+        """
+        Common workflow: submit TES task, poll for results, and collect data.
+        Used by both analytics and bunny analysis types.
+        
+        Args:
+            tes_message (tes.Task): TES task message to submit
+            bucket (str): MinIO bucket for outputs
+            output_format (str): Output file format (default: "json")
+            submit_message (str, optional): Custom message to print when submitting
+            
+        Returns:
+            Tuple[str, List[Dict[str, Any]]]: (task_id, collected_data)
+        """
+        n_results = len(self.tres)
+        
+        if submit_message:
+            print(submit_message)
+        else:
+            print(f"Submitting task to {n_results} TREs...")
+        
+        result = self.tes_client.submit_task(tes_message, self.token)
+        
+        task_id = result['id']
+        print(f"Task ID: {task_id}")
+        results_paths = [f"{int(task_id) + i + 1}/output.{output_format}" for i in range(n_results)]
+        
+        # Use polling engine to collect results
+        polling_engine = polling.Polling(self.tes_client, self.minio_client, task_id)
+        data = polling_engine.poll_results(results_paths, bucket, n_results, polling_interval=10)
+        
+        return task_id, data
     
     def _collect_results(self, results_paths: List[str], bucket: str, n_results: int) -> List[str]:
         """

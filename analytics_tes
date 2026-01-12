@@ -38,7 +38,7 @@ class AnalyticsTES(tes_client.TESClient):
         Set the command for a TES task.
         """
 
-        connection_string = f"=Host={self.default_db_config['host']}:{self.default_db_config['port']};Username={self.default_db_config['username']};Password={self.default_db_config['password']};Database={self.default_db_config['name']}"
+        connection_string = f"Host={self.default_db_config['host']}:{self.default_db_config['port']};Username={self.default_db_config['username']};Password={self.default_db_config['password']};Database={self.default_db_config['name']}"
         self.command = [
             f"--user-query={query}",
             f"--analysis={analysis_type}",
@@ -58,13 +58,26 @@ class AnalyticsTES(tes_client.TESClient):
         workdir=workdir)]
         return self.executors
 
+    def set_tes_messages(self, query: str, analysis_type: str, name: str = "test", output_format: str = "json") -> None:
+        """
+        Set the TES message for a TES task.
+        """
+        self.set_inputs()
+        self.set_outputs(name=name, output_path="/outputs", output_type="DIRECTORY")
+        self.set_executors(query=query, analysis_type=analysis_type, workdir="/app", output_path="/outputs", output_format=output_format)
+        self.create_tes_message(name=name)
+        self.create_FiveSAFES_TES_message()
+        return None
+
 if __name__ == "__main__":
     analytics_tes = AnalyticsTES()
-    analytics_tes.set_inputs()
-    analytics_tes.set_outputs(name="test", output_path="/outputs", output_type="DIRECTORY")
+    #analytics_tes.set_inputs()
+    #analytics_tes.set_outputs(name="test", output_path="/outputs", output_type="DIRECTORY")
     query = """SELECT value_as_number FROM public.measurement 
 WHERE measurement_concept_id = 21490742
 AND value_as_number IS NOT NULL"""
     
-    analytics_tes.set_executors(query=query, analysis_type="mean", workdir="/app", output_path="/outputs", output_format="json")
+    #analytics_tes.set_executors(query=query, analysis_type="mean", workdir="/app", output_path="/outputs", output_format="json")
+    
+    analytics_tes.set_tes_messages(query=query, analysis_type="mean", name="test", output_format="json")
     pass
