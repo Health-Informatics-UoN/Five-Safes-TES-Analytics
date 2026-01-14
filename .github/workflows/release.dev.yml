@@ -6,8 +6,7 @@ name: Publish a Dev Release
 
 on:
   push:
-    branches: [main]
-
+    branches: [feature/publish-python-container-to-github-registry] 
 env:
   image-name: five-safes-tes-analytics-dev 
   repo-owner: ${{ github.repository_owner }}
