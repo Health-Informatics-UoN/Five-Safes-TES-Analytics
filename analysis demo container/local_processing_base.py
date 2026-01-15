@@ -30,8 +30,6 @@ class BaseLocalProcessing(ABC):
         """SQL fragment for the processing step. By default, returns None."""
         return None
 
-
-
     @property
     @abstractmethod
     def user_query_requirements(self):
@@ -46,9 +44,7 @@ class BaseLocalProcessing(ABC):
         
         if self.processing_query is None:
             return self.user_query
-        # Check if the analysis_type is supported
-        if analysis_type not in LOCAL_PROCESSING_CLASSES:
-            raise ValueError(f"Unsupported analysis type: {analysis_type}")
+        
         # Combine user query with analysis part
         query = f"""WITH user_query AS (
 {self.user_query}
