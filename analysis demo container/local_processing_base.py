@@ -42,13 +42,8 @@ class BaseLocalProcessing(ABC):
         """
         Build a complete SQL query by combining user's data selection with analysis calculations.
         """
-        analysis_type = getattr(self.__class__, 'analysis_type', None)
-        
         if self.processing_query is None:
             return self.user_query
-        # Check if the analysis_type is supported
-        if analysis_type not in LOCAL_PROCESSING_CLASSES:
-            raise ValueError(f"Unsupported analysis type: {analysis_type}")
         # Combine user query with analysis part
         query = f"""WITH user_query AS (
 {self.user_query}

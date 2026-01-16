@@ -27,7 +27,7 @@ class Metadata:
         task_name, bucket, tres = self.analysis_engine.setup_analysis(analysis_type, task_name, bucket, tres)
 
         ### create the TES message for the metadata
-        metadata_tes = BunnyTES()
+        metadata_tes = self.analysis_engine.tes_client
         metadata_tes.set_tes_messages(name=task_name)
         metadata_tes.set_tags(tres=self.analysis_engine.tres)
         metadata_tes.create_FiveSAFES_TES_message()
@@ -81,7 +81,7 @@ class Metadata:
 
 if __name__ == "__main__":
 
-    engine = AnalysisEngine()
+    engine = AnalysisEngine(tes_client=BunnyTES())
     metadata = Metadata(engine)
 
     sql_schema = os.getenv("SQL_SCHEMA", "public")
