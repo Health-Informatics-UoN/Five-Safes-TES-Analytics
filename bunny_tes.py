@@ -28,15 +28,16 @@ class BunnyTES(tes_client.TESClient):
         """
         Set the inputs for a TES task.
         """
-        self.inputs = [tes.Input()]
+        ## don't use tes.Input() because it will set type = 'FILE' rather than empty and not accepted by the TES server
+        self.inputs = []
         return self.inputs
 
 ### is name required? Or even overwritten?
-    def set_outputs(self, name: str, output_path: str, output_type: str = "DIRECTORY") -> tes.Output:
+    def set_outputs(self, name: str, output_path: str, output_type: str = "DIRECTORY", url: str = "", description: str = "") -> tes.Output:
         """
         Set the outputs for a TES task.
         """
-        self.outputs = [tes.Output(path=output_path, type=output_type)]
+        self.outputs = [tes.Output(path=output_path, type=output_type, url=url, name=name, description=description)]
         return self.outputs
 
     def set_env(self) -> Dict[str, str]:
@@ -88,7 +89,7 @@ class BunnyTES(tes_client.TESClient):
         Set the TES message for a TES task.
         """
         self.set_inputs()
-        self.set_outputs(name=name, output_path="/outputs", output_type="DIRECTORY")
+        self.set_outputs(name=name, output_path="/outputs", output_type="DIRECTORY", url = "", description = "")
         self.set_executors(workdir="/app", output_path="/outputs")
         self.create_tes_message(name=name)
         self.create_FiveSAFES_TES_message()
@@ -101,5 +102,5 @@ if __name__ == "__main__":
 
     #bunny_tes.set_executors(query=query, analysis_type="mean", workdir="/app", output_path="/outputs", output_format="json")
     
-    bunny_tes.set_tes_messages(`name="test")
+    bunny_tes.set_tes_messages(name="test")
     pass

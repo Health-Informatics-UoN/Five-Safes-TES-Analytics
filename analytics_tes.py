@@ -10,15 +10,15 @@ class AnalyticsTES(tes_client.TESClient):
         """
         Set the inputs for a TES task.
         """
-        self.inputs = [tes.Input()]
+        self.inputs = None
         return self.inputs
 
 ### is name required? Or even overwritten?
-    def set_outputs(self, name: str, output_path: str, output_type: str = "DIRECTORY") -> tes.Output:
+    def set_outputs(self, name: str, output_path: str, output_type: str = "DIRECTORY", description: str = "", url = "") -> tes.Output:
         """
         Set the outputs for a TES task.
         """
-        self.outputs = [tes.Output(path=output_path, type=output_type)]
+        self.outputs = [tes.Output(path=output_path, type=output_type, name=name, description=description, url=url)]
         return self.outputs
 
     def set_env(self) -> Dict[str, str]:
@@ -38,7 +38,8 @@ class AnalyticsTES(tes_client.TESClient):
         Set the command for a TES task.
         """
 
-        connection_string = f"Host={self.default_db_config['host']}:{self.default_db_config['port']};Username={self.default_db_config['username']};Password={self.default_db_config['password']};Database={self.default_db_config['name']}"
+        #connection_string = f"Host={self.default_db_config['host']}:{self.default_db_config['port']};Username={self.default_db_config['username']};Password={self.default_db_config['password']};Database={self.default_db_config['name']}"
+        connection_string = f"postgresql://postgres:{self.default_db_config['password']}@{self.default_db_config['host']}:{self.default_db_config['port']}/{self.default_db_config['name']}"
         self.command = [
             f"--user-query={query}",
             f"--analysis={analysis_type}",
@@ -79,5 +80,5 @@ AND value_as_number IS NOT NULL"""
     
     #analytics_tes.set_executors(query=query, analysis_type="mean", workdir="/app", output_path="/outputs", output_format="json")
     
-    analytics_tes.set_tes_messages(query=query, analysis_type="mean", name="test", output_format="json")
+    analytics_tes.set_tes_messages(query=query, analysis_type="mean", name="workdir", output_format="json")
     pass

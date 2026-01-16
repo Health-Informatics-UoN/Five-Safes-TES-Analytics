@@ -10,6 +10,7 @@ from string import Template
 class Analyser:
     def __init__(self, analysis_engine: AnalysisEngine):
         self.analysis_engine = analysis_engine
+        self.tes_client = analysis_engine.tes_client
         # Own instances for aggregation and analysis
         self.data_processor = DataProcessor()
         self.statistical_analyzer = StatisticalAnalyzer()
@@ -44,7 +45,7 @@ class Analyser:
             return existing_data_result
         
         ### create the TES message for the analysis
-        analytics_tes = AnalyticsTES()
+        analytics_tes = self.analysis_engine.tes_client
         analytics_tes.set_tes_messages(query=user_query, analysis_type=analysis_type, name=task_name, output_format="json")
         analytics_tes.set_tags(tres=self.analysis_engine.tres)
         five_Safes_TES_message = analytics_tes.create_FiveSAFES_TES_message()
@@ -334,14 +335,15 @@ WHERE p.race_concept_id IN (38003574, 38003584)"""
 if __name__ == "__main__":
     
     # Will use 5STES_PROJECT from environment and 5STES_TOKEN from environment
-    engine = AnalysisEngine() 
+    analytics_tes = AnalyticsTES()
+    engine = AnalysisEngine(tes_client=analytics_tes) 
     analyser = Analyser(engine)
     sql_schema = os.getenv("SQL_SCHEMA", "public")
     
     # Example: Run variance analysis first, then mean analysis on the same data
     query_template = Template("""SELECT value_as_number FROM $schema.measurement 
-    WHERE measurement_concept_id = 21490742
-    AND value_as_number IS NOT NULL""")
+WHERE measurement_concept_id = 21490742
+AND value_as_number IS NOT NULL""")
     
     user_query = query_template.safe_substitute(schema=sql_schema)
     

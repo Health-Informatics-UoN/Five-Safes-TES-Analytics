@@ -20,7 +20,7 @@ class AnalysisEngine:
     Analysis-specific logic is handled by the Analyser class.
     """
     
-    def __init__(self, token: str = None, project: str = None):
+    def __init__(self, tes_client: TESClient, token: str = None, project: str = None):
         """
         Initialize the analysis engine.
         
@@ -41,7 +41,7 @@ class AnalysisEngine:
                 raise ValueError("TRE_FX_PROJECT environment variable is required when project parameter is not provided")
         
         self.project = project
-        self.tes_client = TESClient()
+        self.tes_client = tes_client
         self.minio_client = MinIOClient(token)
         
     def parse_tres(self, tres: str) -> List[str]:
