@@ -38,7 +38,6 @@ class AnalyticsTES(tes_client.TESClient):
         Set the command for a TES task.
         """
 
-        #connection_string = f"Host={self.default_db_config['host']}:{self.default_db_config['port']};Username={self.default_db_config['username']};Password={self.default_db_config['password']};Database={self.default_db_config['name']}"
         connection_string = f"postgresql://postgres:{self.default_db_config['password']}@{self.default_db_config['host']}:{self.default_db_config['port']}/{self.default_db_config['name']}"
         self.command = [
             f"--user-query={query}",
@@ -72,13 +71,10 @@ class AnalyticsTES(tes_client.TESClient):
 
 if __name__ == "__main__":
     analytics_tes = AnalyticsTES()
-    #analytics_tes.set_inputs()
-    #analytics_tes.set_outputs(name="test", output_path="/outputs", output_type="DIRECTORY")
+    
     query = """SELECT value_as_number FROM public.measurement 
 WHERE measurement_concept_id = 21490742
 AND value_as_number IS NOT NULL"""
-    
-    #analytics_tes.set_executors(query=query, analysis_type="mean", workdir="/app", output_path="/outputs", output_format="json")
     
     analytics_tes.set_tes_messages(query=query, analysis_type="mean", name="workdir", output_format="json")
     pass

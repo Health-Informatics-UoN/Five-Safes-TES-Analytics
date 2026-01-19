@@ -59,9 +59,13 @@ class BunnyTES(tes_client.TESClient):
         }
         return self.env
 
-    def set_command(self, output_path: str) -> List[str]:
+    def set_command(self, output_path: str, code: str) -> List[str]:
         """
         Set the command for a TES task.
+        
+        Args:
+            output_path (str): Path for output files
+            code (str): Code parameter for bunny (e.g., 'DEMOGRAPHICS', 'PROCEDURES')
         """
 
         self.command = [
@@ -74,7 +78,7 @@ class BunnyTES(tes_client.TESClient):
         ]
         return self.command
 
-    def set_executors(self, workdir = "/app", output_path="/outputs") -> Union[tes.Executor, List[tes.Executor]]:
+    def set_executors(self, workdir = "/app", output_path="/outputs", code: str = "DEMOGRAPHICS") -> Union[tes.Executor, List[tes.Executor]]:
         """
         Set the executors for a TES task.
         """

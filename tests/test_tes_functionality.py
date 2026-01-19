@@ -1,0 +1,829 @@
+#!/usr/bin/env python3
+"""
+Unit tests for TES (Task Execution Service) functionality.
+Tests the TES message creation, data validation, and client operations.
+"""
+
+import pytest
+import os
+import json
+from unittest.mock import Mock, patch, MagicMock
+import sys
+
+# Add the current directory to the path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from analytics_tes import AnalyticsTES
+from bunny_tes import BunnyTES
+from metadata import Metadata
+from analysis_engine import AnalysisEngine
+from tes_client import TESClient
+import tes
+
+
+class TestAnalyticsTES:
+    """Test cases for AnalyticsTES class methods."""
+    
+    @pytest.fixture
+    def analytics_tes(self):
+        """Set up AnalyticsTES instance with mock environment variables."""
+        with patch.dict(os.environ, {
+            'TES_BASE_URL': 'http://test-tes-url.com',
+            'TES_DOCKER_IMAGE': 'test-image:latest',
+            'DB_HOST': 'test-db-host',
+            'DB_PORT': '5432',
+            'DB_USERNAME': 'test-user',
+            'DB_PASSWORD': 'test-password',
+            'DB_NAME': 'test-db',
+            '5STES_TRES': 'TRE1,TRE2'
+        }):
+            return AnalyticsTES()
+    
+    def test_set_inputs(self, analytics_tes):
+        """Test that set_inputs returns None for analytics tasks."""
+        result = analytics_tes.set_inputs()
+        assert result is None
+        assert analytics_tes.inputs is None
+    
+    def test_set_outputs(self, analytics_tes):
+        """Test set_outputs creates correct output structure."""
+        outputs = analytics_tes.set_outputs(
+            name="test_analysis",
+            output_path="/outputs",
+            output_type="DIRECTORY",
+            description="Test output",
+            url=""
+        )
+        
+        assert isinstance(outputs, list)
+        assert len(outputs) == 1
+        
+        output = outputs[0]
+        assert isinstance(output, tes.Output)
+        assert output.name == "test_analysis"
+        assert output.path == "/outputs"
+        assert output.type == "DIRECTORY"
+        assert output.description == "Test output"
+    
+    def test_set_env(self, analytics_tes):
+        """Test set_env creates correct environment variables."""
+        env = analytics_tes.set_env()
+        
+        assert isinstance(env, dict)
+        assert "DATASOURCE_DB_DATABASE" in env
+        assert "DATASOURCE_DB_HOST" in env
+        assert "DATASOURCE_DB_PASSWORD" in env
+        assert "DATASOURCE_DB_USERNAME" in env
+        
+        # Verify values match the default_db_config
+        assert env["DATASOURCE_DB_DATABASE"] == analytics_tes.default_db_config['name']
+        assert env["DATASOURCE_DB_HOST"] == analytics_tes.default_db_config['host']
+        assert env["DATASOURCE_DB_PASSWORD"] == analytics_tes.default_db_config['password']
+        assert env["DATASOURCE_DB_USERNAME"] == analytics_tes.default_db_config['username']
+    
+    def test_set_command(self, analytics_tes):
+        """Test set_command creates correct command array."""
+        query = "SELECT value_as_number FROM measurement WHERE concept_id = 123"
+        analysis_type = "mean"
+        output_path = "/outputs"
+        output_format = "json"
+        
+        command = analytics_tes.set_command(query, analysis_type, output_path, output_format)
+        
+        assert isinstance(command, list)
+        assert len(command) == 5
+        
+        # Check each command argument
+        assert f"--user-query={query}" in command
+        assert f"--analysis={analysis_type}" in command
+        assert f"--output-filename={output_path}/output" in command
+        assert f"--output-format={output_format}" in command
+        
+        # Check db-connection string format
+        db_conn_arg = [arg for arg in command if arg.startswith("--db-connection=")][0]
+        assert "postgresql://" in db_conn_arg
+        assert analytics_tes.default_db_config['host'] in db_conn_arg
+        assert analytics_tes.default_db_config['port'] in db_conn_arg
+        assert analytics_tes.default_db_config['name'] in db_conn_arg
+    
+    def test_set_executors(self, analytics_tes):
+        """Test set_executors creates correct executor structure."""
+        query = "SELECT * FROM measurement"
+        analysis_type = "variance"
+        
+        executors = analytics_tes.set_executors(
+            query=query,
+            analysis_type=analysis_type,
+            workdir="/app",
+            output_path="/outputs",
+            output_format="json"
+        )
+        
+        assert isinstance(executors, list)
+        assert len(executors) == 1
+        
+        executor = executors[0]
+        assert isinstance(executor, tes.Executor)
+        assert executor.image == analytics_tes.default_image
+        assert executor.workdir == "/app"
+        
+        # Verify command was set correctly
+        assert isinstance(executor.command, list)
+        assert any("--user-query=" in cmd for cmd in executor.command)
+        assert any("--analysis=" in cmd for cmd in executor.command)
+        
+        # Verify environment was set correctly
+        assert isinstance(executor.env, dict)
+        assert "DATASOURCE_DB_DATABASE" in executor.env
+    
+    def test_set_tes_messages(self, analytics_tes):
+        """Test set_tes_messages creates complete TES task."""
+        query = "SELECT value_as_number FROM measurement"
+        analysis_type = "mean"
+        name = "test_analysis"
+        
+        analytics_tes.set_tes_messages(
+            query=query,
+            analysis_type=analysis_type,
+            name=name,
+            output_format="json"
+        )
+        
+        # Verify task was created
+        assert analytics_tes.task is not None
+        assert isinstance(analytics_tes.task, tes.Task)
+        
+        # Verify task components
+        assert analytics_tes.task.name == name
+        assert analytics_tes.task.inputs is None  # Analytics tasks have no inputs
+        assert analytics_tes.task.outputs is not None
+        assert analytics_tes.task.executors is not None
+        
+        # Verify tags were set (FiveSAFES)
+        assert analytics_tes.task.tags is not None
+        assert "Project" in analytics_tes.task.tags
+        assert "tres" in analytics_tes.task.tags
+
+
+class TestTESMessageStructure:
+    """Test cases to validate TES message data structure."""
+    
+    @pytest.fixture
+    def analytics_tes(self):
+        """Set up AnalyticsTES instance with mock environment variables."""
+        with patch.dict(os.environ, {
+            'TES_BASE_URL': 'http://test-tes-url.com',
+            'TES_DOCKER_IMAGE': 'analytics:v1.0',
+            'DB_HOST': 'postgres.example.com',
+            'DB_PORT': '5432',
+            'DB_USERNAME': 'analytics_user',
+            'DB_PASSWORD': 'secure_password',
+            'DB_NAME': 'omop_cdm',
+            '5STES_TRES': 'TRE1,TRE2,TRE3'
+        }):
+            return AnalyticsTES()
+    
+    def test_tes_message_mean_analysis(self, analytics_tes):
+        """Test TES message for mean analysis has correct structure."""
+        query = "SELECT value_as_number FROM measurement WHERE concept_id = 123"
+        
+        analytics_tes.set_tes_messages(
+            query=query,
+            analysis_type="mean",
+            name="mean_analysis_test"
+        )
+        
+        task = analytics_tes.task
+        
+        # Verify basic structure
+        assert task.name == "mean_analysis_test"
+        assert task.inputs is None
+        assert len(task.outputs) == 1
+        assert len(task.executors) == 1
+        
+        # Verify outputs
+        output = task.outputs[0]
+        assert output.path == "/outputs"
+        assert output.type == "DIRECTORY"
+        
+        # Verify executor
+        executor = task.executors[0]
+        assert executor.image == "analytics:v1.0"
+        assert executor.workdir == "/app"
+        
+        # Verify command contains analysis type
+        command_str = " ".join(executor.command)
+        assert "--analysis=mean" in command_str
+        assert "--user-query=" in command_str
+        
+        # Verify tags
+        assert "tres" in task.tags
+        assert "TRE1|TRE2|TRE3" in task.tags["tres"]
+    
+    def test_tes_message_variance_analysis(self, analytics_tes):
+        """Test TES message for variance analysis."""
+        query = "SELECT value_as_number FROM measurement"
+        
+        analytics_tes.set_tes_messages(
+            query=query,
+            analysis_type="variance",
+            name="variance_test"
+        )
+        
+        executor = analytics_tes.task.executors[0]
+        command_str = " ".join(executor.command)
+        
+        assert "--analysis=variance" in command_str
+    
+    def test_tes_message_pmcc_analysis(self, analytics_tes):
+        """Test TES message for PMCC analysis."""
+        query = "SELECT x, y FROM measurements"
+        
+        analytics_tes.set_tes_messages(
+            query=query,
+            analysis_type="pmcc",
+            name="pmcc_test"
+        )
+        
+        executor = analytics_tes.task.executors[0]
+        command_str = " ".join(executor.command)
+        
+        assert "--analysis=pmcc" in command_str
+    
+    def test_tes_message_environment_variables(self, analytics_tes):
+        """Test that environment variables are correctly set in TES message."""
+        analytics_tes.set_tes_messages(
+            query="SELECT * FROM test",
+            analysis_type="mean",
+            name="env_test"
+        )
+        
+        executor = analytics_tes.task.executors[0]
+        env = executor.env
+        
+        assert env["DATASOURCE_DB_DATABASE"] == "omop_cdm"
+        assert env["DATASOURCE_DB_HOST"] == "postgres.example.com"
+        assert env["DATASOURCE_DB_USERNAME"] == "analytics_user"
+        assert env["DATASOURCE_DB_PASSWORD"] == "secure_password"
+    
+    def test_tes_message_database_connection_string(self, analytics_tes):
+        """Test that database connection string is correctly formatted."""
+        analytics_tes.set_tes_messages(
+            query="SELECT * FROM test",
+            analysis_type="mean",
+            name="db_conn_test"
+        )
+        
+        executor = analytics_tes.task.executors[0]
+        command = executor.command
+        
+        # Find the db-connection argument
+        db_conn = [arg for arg in command if arg.startswith("--db-connection=")][0]
+        conn_str = db_conn.replace("--db-connection=", "")
+        
+        # Verify PostgreSQL connection string format
+        assert conn_str.startswith("postgresql://")
+        assert "postgres.example.com" in conn_str
+        assert "5432" in conn_str
+        assert "omop_cdm" in conn_str
+    
+    def test_tes_message_output_format(self, analytics_tes):
+        """Test that output format is correctly set."""
+        analytics_tes.set_tes_messages(
+            query="SELECT * FROM test",
+            analysis_type="mean",
+            name="output_format_test",
+            output_format="csv"
+        )
+        
+        executor = analytics_tes.task.executors[0]
+        command_str = " ".join(executor.command)
+        
+        assert "--output-format=csv" in command_str
+
+
+class TestTESClientURLConstruction:
+    """Test cases for TES Client URL construction and configuration."""
+    
+    def test_tes_url_construction(self):
+        """Test TES URL construction from base URL."""
+        # NOTE: There's a bug in the URL construction when base_url has no path
+        # The Path object doesn't add a leading slash, resulting in URLs like
+        # "http://example.comv1" instead of "http://example.com/v1"
+        # This test documents the current (buggy) behavior
+        with patch.dict(os.environ, {
+            'TES_BASE_URL': 'http://example.com',
+            'TES_DOCKER_IMAGE': 'test:latest',
+            'DB_HOST': 'db',
+            'DB_PORT': '5432',
+            'DB_USERNAME': 'user',
+            'DB_PASSWORD': 'pass',
+            'DB_NAME': 'db',
+            '5STES_TRES': 'TRE1'
+        }):
+            client = AnalyticsTES()
+            
+            assert client.TES_url == "http://example.com/v1"
+    
+    def test_submission_url_construction(self):
+        """Test submission URL construction."""
+    
+        with patch.dict(os.environ, {
+            'TES_BASE_URL': 'http://example.com',
+            'TES_DOCKER_IMAGE': 'test:latest',
+            'DB_HOST': 'db',
+            'DB_PORT': '5432',
+            'DB_USERNAME': 'user',
+            'DB_PASSWORD': 'pass',
+            'DB_NAME': 'db',
+            '5STES_TRES': 'TRE1'
+        }):
+            client = AnalyticsTES()
+            
+            assert client.submission_url == "http://example.com/api/Submission"
+    
+    def test_tes_url_with_path_in_base(self):
+        """Test TES URL construction when base URL has a path."""
+        with patch.dict(os.environ, {
+            'TES_BASE_URL': 'http://example.com/api/tes',
+            'TES_DOCKER_IMAGE': 'test:latest',
+            'DB_HOST': 'db',
+            'DB_PORT': '5432',
+            'DB_USERNAME': 'user',
+            'DB_PASSWORD': 'pass',
+            'DB_NAME': 'db',
+            '5STES_TRES': 'TRE1'
+        }):
+            client = AnalyticsTES()
+            
+            # Should append /v1 to the path
+            assert "/v1" in client.TES_url
+    
+    def test_required_env_variables(self):
+        """Test that missing required environment variables raise errors."""
+        # Missing TES_BASE_URL
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(ValueError, match="TES_BASE_URL"):
+                AnalyticsTES()
+        
+        # Missing TES_DOCKER_IMAGE
+        with patch.dict(os.environ, {'TES_BASE_URL': 'http://test.com'}, clear=True):
+            with pytest.raises(ValueError, match="TES_DOCKER_IMAGE"):
+                AnalyticsTES()
+    
+    def test_tags_configuration(self):
+        """Test that tags are correctly configured."""
+        with patch.dict(os.environ, {
+            'TES_BASE_URL': 'http://example.com',
+            'TES_DOCKER_IMAGE': 'test:latest',
+            'DB_HOST': 'db',
+            'DB_PORT': '5432',
+            'DB_USERNAME': 'user',
+            'DB_PASSWORD': 'pass',
+            'DB_NAME': 'db',
+            '5STES_TRES': 'TRE1,TRE2,TRE3'
+        }):
+            client = AnalyticsTES()
+            
+            assert "tres" in client.tags
+            assert isinstance(client.tags["tres"], list)
+            assert client.tags["tres"] == ['TRE1', 'TRE2', 'TRE3']
+
+
+class TestTESTaskIntegration:
+    """Integration tests for complete TES task creation workflow."""
+    
+    @pytest.fixture
+    def analytics_tes(self):
+        """Set up AnalyticsTES instance."""
+        with patch.dict(os.environ, {
+            'TES_BASE_URL': 'http://test-tes-url.com',
+            'TES_DOCKER_IMAGE': 'analytics:latest',
+            'DB_HOST': 'postgres-server',
+            'DB_PORT': '5432',
+            'DB_USERNAME': 'test_user',
+            'DB_PASSWORD': 'test_pass',
+            'DB_NAME': 'test_db',
+            '5STES_TRES': 'TRE1,TRE2'
+        }):
+            return AnalyticsTES()
+    
+    def test_complete_mean_analysis_workflow(self, analytics_tes):
+        """Test complete workflow for mean analysis TES task creation."""
+        query = "SELECT value_as_number FROM measurement WHERE concept_id = 123"
+        
+        # Create complete TES message
+        analytics_tes.set_tes_messages(
+            query=query,
+            analysis_type="mean",
+            name="integration_test_mean",
+            output_format="json"
+        )
+        
+        task = analytics_tes.task
+        
+        # Verify all components are present
+        assert task is not None
+        assert task.name == "integration_test_mean"
+        assert task.outputs is not None and len(task.outputs) > 0
+        assert task.executors is not None and len(task.executors) > 0
+        
+        # Verify executor configuration
+        executor = task.executors[0]
+        assert executor.image == "analytics:latest"
+        assert executor.workdir == "/app"
+        assert executor.command is not None
+        assert executor.env is not None
+        
+        # Verify tags for FiveSAFES
+        assert task.tags is not None
+        assert "tres" in task.tags
+        assert "Project" in task.tags
+    
+    def test_task_serialization(self, analytics_tes):
+        """Test that TES task can be serialized to JSON."""
+        analytics_tes.set_tes_messages(
+            query="SELECT * FROM test",
+            analysis_type="variance",
+            name="serialization_test"
+        )
+        
+        task = analytics_tes.task
+        
+        # Convert to dict (py-tes objects should be serializable)
+        try:
+            task_dict = task.as_dict()
+            assert isinstance(task_dict, dict)
+            assert "name" in task_dict
+            assert "executors" in task_dict
+            assert "outputs" in task_dict
+        except AttributeError:
+            # Some versions might not have as_dict, try manual conversion
+            assert task.name is not None
+            assert task.executors is not None
+
+
+class TestBunnyTES:
+    """Test cases for BunnyTES class methods."""
+    
+    @pytest.fixture
+    def bunny_tes(self):
+        """Set up BunnyTES instance with mock environment variables."""
+        with patch.dict(os.environ, {
+            'TES_BASE_URL': 'http://test-bunny-url.com',
+            'TES_DOCKER_IMAGE': 'bunny-image:latest',
+            'DB_HOST': 'bunny-db-host',
+            'DB_PORT': '5432',
+            'DB_USERNAME': 'bunny-user',
+            'DB_PASSWORD': 'bunny-password',
+            'DB_NAME': 'bunny-db',
+            'DB_SCHEMA': 'public',
+            '5STES_TRES': 'TRE1,TRE2',
+            'COLLECTION_ID': 'test-collection-123',
+            'BUNNY_LOGGER_LEVEL': 'DEBUG',
+            'TASK_API_BASE_URL': 'http://task-api.example.com',
+            'TASK_API_USERNAME': 'api_user',
+            'TASK_API_PASSWORD': 'api_pass'
+        }):
+            return BunnyTES()
+    
+    def test_bunny_specific_env_vars(self, bunny_tes):
+        """Test that BunnyTES reads bunny-specific environment variables."""
+        assert bunny_tes.collection_id == 'test-collection-123'
+        assert bunny_tes.bunny_logger_level == 'DEBUG'
+        assert bunny_tes.task_api_base_url == 'http://task-api.example.com'
+        assert bunny_tes.task_api_username == 'api_user'
+        assert bunny_tes.task_api_password == 'api_pass'
+    
+    def test_set_inputs(self, bunny_tes):
+        """Test that set_inputs returns empty list for Bunny tasks."""
+        result = bunny_tes.set_inputs()
+        assert isinstance(result, list)
+        assert len(result) == 0
+        assert bunny_tes.inputs == []
+    
+    def test_set_outputs(self, bunny_tes):
+        """Test set_outputs creates correct output structure."""
+        outputs = bunny_tes.set_outputs(
+            name="bunny_output",
+            output_path="/outputs",
+            output_type="DIRECTORY",
+            url="",
+            description="Bunny output"
+        )
+        
+        assert isinstance(outputs, list)
+        assert len(outputs) == 1
+        
+        output = outputs[0]
+        assert isinstance(output, tes.Output)
+        assert output.name == "bunny_output"
+        assert output.path == "/outputs"
+        assert output.type == "DIRECTORY"
+        assert output.description == "Bunny output"
+    
+    def test_set_env(self, bunny_tes):
+        """Test set_env creates correct environment variables including bunny-specific vars."""
+        env = bunny_tes.set_env()
+        
+        assert isinstance(env, dict)
+        
+        # Standard database variables
+        assert "DATASOURCE_DB_DATABASE" in env
+        assert "DATASOURCE_DB_HOST" in env
+        assert "DATASOURCE_DB_PASSWORD" in env
+        assert "DATASOURCE_DB_USERNAME" in env
+        assert "DATASOURCE_DB_PORT" in env
+        assert "DATASOURCE_DB_SCHEMA" in env
+        
+        # Bunny-specific variables
+        assert "TASK_API_BASE_URL" in env
+        assert "TASK_API_USERNAME" in env
+        assert "TASK_API_PASSWORD" in env
+        assert "COLLECTION_ID" in env
+        assert "BUNNY_LOGGER_LEVEL" in env
+        
+        # Verify values
+        assert env["DATASOURCE_DB_SCHEMA"] == 'public'
+        assert env["COLLECTION_ID"] == 'test-collection-123'
+        assert env["BUNNY_LOGGER_LEVEL"] == 'DEBUG'
+        assert env["TASK_API_BASE_URL"] == 'http://task-api.example.com'
+    
+    def test_set_command(self, bunny_tes):
+        """Test set_command creates correct command array for Bunny."""
+        output_path = "/outputs"
+        code = "DEMOGRAPHICS"
+        
+        command = bunny_tes.set_command(output_path, code)
+        
+        assert isinstance(command, list)
+        assert "bunny" in command
+        assert "--body-json" in command
+        assert "--output" in command
+        
+        # Check output path in command
+        assert f"{output_path}/output.json" in command
+        
+        # Check that code is in the JSON body
+        json_arg = [arg for arg in command if "code" in arg][0]
+        assert code in json_arg
+    
+    def test_set_executors(self, bunny_tes):
+        """Test set_executors creates correct executor structure for Bunny."""
+        code = "DEMOGRAPHICS"
+        
+        executors = bunny_tes.set_executors(
+            workdir="/app",
+            output_path="/outputs",
+            code=code
+        )
+        
+        assert isinstance(executors, list)
+        assert len(executors) == 1
+        
+        executor = executors[0]
+        assert isinstance(executor, tes.Executor)
+        assert executor.image == bunny_tes.default_image
+        assert executor.workdir == "/app"
+        
+        # Verify command was set correctly
+        assert isinstance(executor.command, list)
+        assert "bunny" in executor.command
+        
+        # Verify environment includes bunny-specific vars
+        assert isinstance(executor.env, dict)
+        assert "COLLECTION_ID" in executor.env
+        assert "BUNNY_LOGGER_LEVEL" in executor.env
+    
+    def test_set_tes_messages(self, bunny_tes):
+        """Test set_tes_messages creates complete Bunny TES task."""
+        name = "test_bunny_task"
+        code = "DEMOGRAPHICS"
+        
+        bunny_tes.set_tes_messages(name=name, code=code)
+        
+        # Verify task was created
+        assert bunny_tes.task is not None
+        assert isinstance(bunny_tes.task, tes.Task)
+        
+        # Verify task components
+        assert bunny_tes.task.name == name
+        assert bunny_tes.task.inputs == []  # Bunny tasks have empty input list
+        assert bunny_tes.task.outputs is not None
+        assert bunny_tes.task.executors is not None
+        
+        # Verify tags were set (FiveSAFES)
+        assert bunny_tes.task.tags is not None
+        assert "Project" in bunny_tes.task.tags
+        assert "tres" in bunny_tes.task.tags
+    
+    def test_bunny_message_structure(self, bunny_tes):
+        """Test that Bunny TES message has correct structure for metadata."""
+        bunny_tes.set_tes_messages(name="metadata_test", code="DEMOGRAPHICS")
+        
+        task = bunny_tes.task
+        
+        # Verify basic structure
+        assert task.name == "metadata_test"
+        assert task.inputs == []
+        assert len(task.outputs) == 1
+        assert len(task.executors) == 1
+        
+        # Verify executor
+        executor = task.executors[0]
+        assert executor.workdir == "/app"
+        
+        # Verify command contains bunny
+        assert "bunny" in executor.command
+        
+        # Verify environment has all necessary bunny vars
+        env = executor.env
+        assert "COLLECTION_ID" in env
+        assert "BUNNY_LOGGER_LEVEL" in env
+        assert "TASK_API_BASE_URL" in env
+
+
+class TestMetadata:
+    """Test cases for Metadata class."""
+    
+    @pytest.fixture
+    def mock_engine(self):
+        """Set up mock AnalysisEngine."""
+        engine = Mock(spec=AnalysisEngine)
+        engine.tes_client = Mock(spec=BunnyTES)
+        engine.tes_client.task = Mock()
+        engine.tres = ['TRE1', 'TRE2']
+        return engine
+    
+    @pytest.fixture
+    def metadata(self, mock_engine):
+        """Set up Metadata instance with mock engine."""
+        return Metadata(mock_engine)
+    
+    def test_metadata_initialization(self, metadata, mock_engine):
+        """Test that Metadata initializes correctly."""
+        assert metadata.analysis_engine == mock_engine
+        assert metadata.data_processor is not None
+        assert isinstance(metadata.aggregated_data, dict)
+    
+    def test_postprocess_metadata(self, metadata):
+        """Test postprocess_metadata returns raw data unchanged (placeholder)."""
+        raw_data = {"test_key": "test_value", "count": 42}
+        result = metadata.postprocess_metadata(raw_data)
+        
+        # Placeholder: just returns the raw data unchanged
+        assert result == raw_data
+        
+    def test_postprocess_metadata_list(self, metadata):
+        """Test postprocess_metadata handles list data (placeholder)."""
+        raw_data = [{"count": 100}, {"count": 150}]
+        result = metadata.postprocess_metadata(raw_data)
+        
+        # Placeholder: just returns the raw data unchanged
+        assert result == raw_data
+    
+    def test_get_metadata(self, metadata):
+        """Test get_metadata workflow with placeholder aggregation."""
+        # Configure mock engine methods
+        metadata.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
+        test_data = [{"metadata": "test_data"}]
+        metadata.analysis_engine._submit_and_collect_results.return_value = ("task-123", test_data)
+        
+        # Call get_metadata
+        result = metadata.get_metadata(
+            tres=['TRE1', 'TRE2'],
+            task_name="test_metadata",
+            bucket="test-bucket"
+        )
+        
+        # Verify result structure
+        assert isinstance(result, dict)
+        assert result['analysis_type'] == "metadata"
+        assert result['task_id'] == "task-123"
+        assert result['tres_used'] == ['TRE1', 'TRE2']
+        assert result['data_sources'] == 1
+        assert 'result' in result
+        # Placeholder: result should be the raw data passed through
+        assert result['result'] == test_data
+    
+    def test_get_metadata_calls_tes_methods(self, metadata):
+        """Test that get_metadata calls the correct TES methods."""
+        metadata.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
+        metadata.analysis_engine._submit_and_collect_results.return_value = ("task-456", [{"data": "test"}])
+        
+        # Call get_metadata
+        metadata.get_metadata(tres=['TRE1'])
+        
+        # Verify TES client methods were called
+        metadata.analysis_engine.tes_client.set_tes_messages.assert_called_once()
+        metadata.analysis_engine.tes_client.set_tags.assert_called_once()
+        metadata.analysis_engine.tes_client.create_FiveSAFES_TES_message.assert_called_once()
+    
+    def test_get_metadata_stores_raw_data(self, metadata):
+        """Test that get_metadata stores raw data (placeholder - no aggregation yet)."""
+        metadata.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
+        
+        # Mock data from two TREs
+        mock_data = [
+            {"count": 100, "mean": 25.5},
+            {"count": 150, "mean": 30.2}
+        ]
+        metadata.analysis_engine._submit_and_collect_results.return_value = ("task-789", mock_data)
+        
+        result = metadata.get_metadata(tres=['TRE1', 'TRE2'])
+        
+        # TODO: Once aggregation is implemented, this test should verify proper aggregation
+        # For now, verify that raw data is passed through unchanged
+        assert result['result'] == mock_data
+        
+        # Verify raw data was stored in aggregated_data
+        assert 'raw_data' in metadata.aggregated_data
+        assert metadata.aggregated_data['raw_data'] == mock_data
+    
+    def test_get_metadata_error_handling(self, metadata):
+        """Test that get_metadata handles errors properly."""
+        metadata.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
+        metadata.analysis_engine._submit_and_collect_results.side_effect = Exception("TES submission failed")
+        
+        # Should raise the exception
+        with pytest.raises(Exception, match="TES submission failed"):
+            metadata.get_metadata(tres=['TRE1'])
+
+
+class TestMetadataTESIntegration:
+    """Integration tests for metadata TES message creation."""
+    
+    @pytest.fixture
+    def bunny_tes(self):
+        """Set up BunnyTES instance."""
+        with patch.dict(os.environ, {
+            'TES_BASE_URL': 'http://bunny.example.com',
+            'TES_DOCKER_IMAGE': 'bunny:v1.0',
+            'DB_HOST': 'metadata-db',
+            'DB_PORT': '5432',
+            'DB_USERNAME': 'metadata_user',
+            'DB_PASSWORD': 'metadata_pass',
+            'DB_NAME': 'metadata_db',
+            'DB_SCHEMA': 'cdm',
+            '5STES_TRES': 'TRE1,TRE2,TRE3',
+            'COLLECTION_ID': 'metadata-collection',
+            'BUNNY_LOGGER_LEVEL': 'INFO',
+            'TASK_API_BASE_URL': 'http://api.bunny.com',
+            'TASK_API_USERNAME': 'bunny_api',
+            'TASK_API_PASSWORD': 'bunny_secret'
+        }):
+            return BunnyTES()
+    
+    def test_complete_metadata_workflow(self, bunny_tes):
+        """Test complete workflow for metadata TES task creation."""
+        code = "DEMOGRAPHICS"
+        
+        # Create complete TES message
+        bunny_tes.set_tes_messages(name="integration_test_metadata", code=code)
+        
+        task = bunny_tes.task
+        
+        # Verify all components are present
+        assert task is not None
+        assert task.name == "integration_test_metadata"
+        assert task.inputs == []
+        assert task.outputs is not None and len(task.outputs) > 0
+        assert task.executors is not None and len(task.executors) > 0
+        
+        # Verify executor configuration
+        executor = task.executors[0]
+        assert executor.image == "bunny:v1.0"
+        assert executor.workdir == "/app"
+        assert executor.command is not None
+        assert executor.env is not None
+        
+        # Verify bunny-specific env vars in executor
+        assert executor.env["COLLECTION_ID"] == 'metadata-collection'
+        assert executor.env["BUNNY_LOGGER_LEVEL"] == 'INFO'
+        assert executor.env["TASK_API_BASE_URL"] == 'http://api.bunny.com'
+        assert executor.env["DATASOURCE_DB_SCHEMA"] == 'cdm'
+        
+        # Verify tags for FiveSAFES
+        assert task.tags is not None
+        assert "tres" in task.tags
+        assert "Project" in task.tags
+        assert "TRE1|TRE2|TRE3" in task.tags["tres"]
+    
+    def test_metadata_command_structure(self, bunny_tes):
+        """Test that metadata command has correct structure."""
+        bunny_tes.set_tes_messages(name="command_test", code="PROCEDURES")
+        
+        executor = bunny_tes.task.executors[0]
+        command = executor.command
+        
+        # Verify command structure
+        assert "bunny" in command
+        assert "--body-json" in command
+        assert "--output" in command
+        
+        # Find and verify JSON body
+        json_args = [arg for arg in command if "code" in arg]
+        assert len(json_args) > 0
+        
+        # Verify code is in JSON
+        assert "PROCEDURES" in json_args[0]

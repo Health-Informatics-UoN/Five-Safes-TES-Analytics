@@ -40,10 +40,14 @@ class Metadata:
                 submit_message=f"Submitting {analysis_type} analysis to {len(self.analysis_engine.tres)} TREs..."
             )
 
-            # Process and analyze data (aggregation moved to this class)
+            # Process and analyze data
             print("Processing and analyzing data...")
 
-            raw_aggregated_data = self.data_processor.aggregate_data(data, "metadata")
+            # TODO: Implement proper metadata aggregation
+            # For now, just pass through the raw data as a placeholder
+            # The aggregation logic for metadata is different from analytics
+            # and needs to be implemented separately
+            raw_aggregated_data = data  # Placeholder: no aggregation yet
             
             ## placeholder for now, this is where the postprocessing will go.
             #analysis_result = self.statistical_analyzer.analyze_data(raw_aggregated_data, analysis_type)
@@ -51,7 +55,10 @@ class Metadata:
 
             # Store the aggregated values in the centralized dict
             # Note: Metadata storage may differ from analysis results
-            self.aggregated_data.update(raw_aggregated_data)
+            if isinstance(raw_aggregated_data, dict):
+                self.aggregated_data.update(raw_aggregated_data)
+            else:
+                self.aggregated_data['raw_data'] = raw_aggregated_data
             
 
             return {
@@ -67,17 +74,21 @@ class Metadata:
             raise
 
 
-    def postprocess_metadata(self, raw_aggregated_data: Dict[str, Any]) -> Dict[str, Any]:
+    def postprocess_metadata(self, raw_data: Any) -> Any:
         """
-        Postprocess the metadata (placeholder for now).
+        Postprocess the metadata.
+        
+        TODO: Implement proper metadata postprocessing logic.
+        For now, this is a placeholder that just returns the raw data unchanged.
         
         Args:
-            raw_aggregated_data (Dict[str, Any]): Raw aggregated data
+            raw_data: Raw data from TREs (could be dict, list, etc.)
             
         Returns:
-            Dict[str, Any]: Postprocessed metadata
+            Any: Postprocessed metadata (currently just passes through)
         """
-        return raw_aggregated_data
+        # Placeholder: just return the raw data unchanged
+        return raw_data
 
 if __name__ == "__main__":
 
@@ -88,7 +99,8 @@ if __name__ == "__main__":
 
     print("Running metadata analysis...")
     metadata_result = metadata.get_metadata(
-        task_name="DEMO: metadata test"
+        task_name="DEMO: metadata test",
+        code="DEMOGRAPHICS",
     )
 
     print(f"Metadata analysis result: {metadata_result['result']}")

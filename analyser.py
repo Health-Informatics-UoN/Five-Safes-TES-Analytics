@@ -5,7 +5,7 @@ from data_processor import DataProcessor
 from statistical_analyzer import StatisticalAnalyzer
 import numpy as np
 import os
-from string import Template
+
 
 class Analyser:
     def __init__(self, analysis_engine: AnalysisEngine):
@@ -333,6 +333,7 @@ WHERE p.race_concept_id IN (38003574, 38003584)"""
 
 # Example usage
 if __name__ == "__main__":
+    from string import Template
     
     # Will use 5STES_PROJECT from environment and 5STES_TOKEN from environment
     analytics_tes = AnalyticsTES()
@@ -357,23 +358,3 @@ AND value_as_number IS NOT NULL""")
     # Show what aggregated data we have stored
     print(f"Mean analysis result: {mean_result['result']}")
     print(f"Stored aggregated data: {analyser.aggregated_data}")
-
-
-
-
-
-
-### for bunny, the command to run is:
-# New method - inline JSON
-# bunny --body-json '{"code":"DEMOGRAPHICS","analysis":"DISTRIBUTION","uuid":"123","collection":"test","owner":"me"}' --output results.json
-
-
-
-    # Check what other analyses we can run on this data
-    #compatible_analyses = analyser.get_compatible_analyses()
-    #print(f"Compatible analyses: {compatible_analyses}")
-    
-    # Run mean analysis on the same stored data (no need to re-query TREs)
-    #print("Running mean analysis on stored data...")
-    #mean_result = analyser.run_additional_analysis("mean")
-    #print(f"Mean analysis result: {mean_result}")

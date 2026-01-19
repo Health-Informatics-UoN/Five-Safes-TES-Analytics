@@ -262,14 +262,18 @@ class TESClient(ABC):
         if TES_url is None:
             parsed = urlparse(self.base_url)
             path = Path(parsed.path) / "v1"
-            self.TES_url = f"{parsed.scheme}://{parsed.netloc}{path}"
+            # Ensure leading slash for URL path
+            path_str = str(path) if str(path).startswith('/') else '/' + str(path)
+            self.TES_url = f"{parsed.scheme}://{parsed.netloc}{path_str}"
         else:
             self.TES_url = TES_url
             
         if submission_url is None:
             parsed = urlparse(self.base_url)
             path = Path(parsed.path) / "api" / "Submission"
-            self.submission_url = f"{parsed.scheme}://{parsed.netloc}{path}"
+            # Ensure leading slash for URL path
+            path_str = str(path) if str(path).startswith('/') else '/' + str(path)
+            self.submission_url = f"{parsed.scheme}://{parsed.netloc}{path_str}"
         else:
             self.submission_url = submission_url
         
