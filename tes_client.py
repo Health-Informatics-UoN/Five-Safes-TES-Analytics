@@ -223,14 +223,6 @@ class Tags(TypedDict):
         """
         return "|".join([f"{key}:{value}" for key, value in self.items()])
 
-#@attrs
-#class FiveSafesTESTask(tes.Task):
-#    url: str
-#    name: str
-#    path: str
-#    content: str
-#    description: str
-
 
 class TESClient(ABC):
     """
@@ -310,7 +302,7 @@ class TESClient(ABC):
                 "password": db_password,
                 "name": db_name,
                 "port": default_db_port,
-                "schema": os.getenv('DB_SCHEMA')
+                "schema": os.getenv('SQL_SCHEMA')
             }
         else:
             self.default_db_config = default_db_config
@@ -501,22 +493,7 @@ class TESClient(ABC):
             "tres": "|".join(self.tags["tres"]) if isinstance(self.tags["tres"], list) else self.tags["tres"]
         }
         task.tags.update(tags_for_task)
-
-        #five_safe_task = FiveSafesTESTask()
-        #five_safe_task.url = self.TES_url
-        ### missing fields for 5STES submission
-        ## Inputs - is this the input? because it should be an empty list
-            ## URl
-            ## Name
-            ## Path
-            ## Content
-            ## Description
-        ## Outputs - this looks like the actual outputs in the tes task object
-            ## URL
-            ## Name
-            ## Description
-            
-            
+           
 
         self.task = task
         return task

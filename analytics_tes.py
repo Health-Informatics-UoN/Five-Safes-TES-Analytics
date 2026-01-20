@@ -13,7 +13,6 @@ class AnalyticsTES(tes_client.TESClient):
         self.inputs = None
         return self.inputs
 
-### is name required? Or even overwritten?
     def set_outputs(self, name: str, output_path: str, output_type: str = "DIRECTORY", description: str = "", url = "") -> tes.Output:
         """
         Set the outputs for a TES task.

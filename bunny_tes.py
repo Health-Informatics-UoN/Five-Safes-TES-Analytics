@@ -21,7 +21,7 @@ class BunnyTES(tes_client.TESClient):
         
         # Add schema to default_db_config if not already present
         if 'schema' not in self.default_db_config:
-            self.default_db_config['schema'] = os.getenv('DB_SCHEMA')  # None if not set - will fail naturally if needed
+            self.default_db_config['schema'] = os.getenv('SQL_SCHEMA')  # None if not set - will fail naturally if needed
 
    #### this section will be implemented for each type of task using the pytes classes. Note that many of these fields are set in the submission layer after submission.
     def set_inputs(self) -> tes.Input:
@@ -50,7 +50,7 @@ class BunnyTES(tes_client.TESClient):
             "DATASOURCE_DB_PASSWORD": self.default_db_config['password'],
             "DATASOURCE_DB_USERNAME": self.default_db_config['username'],
             "DATASOURCE_DB_PORT": self.default_db_config['port'],
-            "DATASOURCE_DB_SCHEMA": self.default_db_config.get('schema'),
+            "DATASOURCE_SQL_SCHEMA": self.default_db_config.get('schema'),
             "TASK_API_BASE_URL": self.task_api_base_url,
             "TASK_API_USERNAME": self.task_api_username,
             "TASK_API_PASSWORD": self.task_api_password,
@@ -101,10 +101,6 @@ class BunnyTES(tes_client.TESClient):
 
 if __name__ == "__main__":
     bunny_tes = BunnyTES()
-    #bunny_tes.set_inputs()
-    #bunny_tes.set_outputs(name="test", output_path="/outputs", output_type="DIRECTORY")
 
-    #bunny_tes.set_executors(query=query, analysis_type="mean", workdir="/app", output_path="/outputs", output_format="json")
-    
     bunny_tes.set_tes_messages(name="test")
     pass
