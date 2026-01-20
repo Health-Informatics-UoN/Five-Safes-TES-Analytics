@@ -223,6 +223,13 @@ class Tags(TypedDict):
         """
         return "|".join([f"{key}:{value}" for key, value in self.items()])
 
+#@attrs
+#class FiveSafesTESTask(tes.Task):
+#    url: str
+#    name: str
+#    path: str
+#    content: str
+#    description: str
 
 class TESClient(ABC):
     """
