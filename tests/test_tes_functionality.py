@@ -9,6 +9,7 @@ import os
 import json
 from unittest.mock import Mock, patch, MagicMock
 import sys
+from urllib.parse import urlparse
 
 # Add the current directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -83,6 +84,7 @@ class TestAnalyticsTES:
     
     def test_set_command(self, analytics_tes):
         """Test set_command creates correct command array."""
+     
         query = "SELECT value_as_number FROM measurement WHERE concept_id = 123"
         analysis_type = "mean"
         output_path = "/outputs"
@@ -99,12 +101,14 @@ class TestAnalyticsTES:
         assert f"--output-filename={output_path}/output" in command
         assert f"--output-format={output_format}" in command
         
-        # Check db-connection string format
+        # Check db-connection string format by parsing the URL
         db_conn_arg = [arg for arg in command if arg.startswith("--db-connection=")][0]
-        assert "postgresql://" in db_conn_arg
-        assert analytics_tes.default_db_config['host'] in db_conn_arg
-        assert analytics_tes.default_db_config['port'] in db_conn_arg
-        assert analytics_tes.default_db_config['name'] in db_conn_arg
+        conn_str = db_conn_arg.replace("--db-connection=", "")
+        assert conn_str.startswith("postgresql://")
+        parsed = urlparse(conn_str)
+        assert parsed.hostname == analytics_tes.default_db_config['host']
+        assert parsed.port == int(analytics_tes.default_db_config['port'])
+        assert parsed.path == "/" + analytics_tes.default_db_config['name']
     
     def test_set_executors(self, analytics_tes):
         """Test set_executors creates correct executor structure."""
@@ -268,6 +272,7 @@ class TestTESMessageStructure:
     
     def test_tes_message_database_connection_string(self, analytics_tes):
         """Test that database connection string is correctly formatted."""
+        
         analytics_tes.set_tes_messages(
             query="SELECT * FROM test",
             analysis_type="mean",
@@ -281,11 +286,13 @@ class TestTESMessageStructure:
         db_conn = [arg for arg in command if arg.startswith("--db-connection=")][0]
         conn_str = db_conn.replace("--db-connection=", "")
         
-        # Verify PostgreSQL connection string format
+        # Verify PostgreSQL connection string format by parsing the URL
         assert conn_str.startswith("postgresql://")
-        assert "postgres.example.com" in conn_str
-        assert "5432" in conn_str
-        assert "omop_cdm" in conn_str
+        parsed = urlparse(conn_str)
+        assert parsed.scheme == "postgresql"
+        assert parsed.hostname == "postgres.example.com"
+        assert parsed.port == 5432
+        assert parsed.path == "/omop_cdm"
     
     def test_tes_message_output_format(self, analytics_tes):
         """Test that output format is correctly set."""
@@ -344,6 +351,7 @@ class TestTESClientURLConstruction:
     
     def test_tes_url_with_path_in_base(self):
         """Test TES URL construction when base URL has a path."""
+        
         with patch.dict(os.environ, {
             'TES_BASE_URL': 'http://example.com/api/tes',
             'TES_DOCKER_IMAGE': 'test:latest',
@@ -357,7 +365,8 @@ class TestTESClientURLConstruction:
             client = AnalyticsTES()
             
             # Should append /v1 to the path
-            assert "/v1" in client.TES_url
+            parsed = urlparse(client.TES_url)
+            assert parsed.path.endswith("/v1")
     
     def test_required_env_variables(self):
         """Test that missing required environment variables raise errors."""
