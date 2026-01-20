@@ -223,13 +223,6 @@ class Tags(TypedDict):
         """
         return "|".join([f"{key}:{value}" for key, value in self.items()])
 
-#@attrs
-#class FiveSafesTESTask(tes.Task):
-#    url: str
-#    name: str
-#    path: str
-#    content: str
-#    description: str
 
 class TESClient(ABC):
     """
@@ -405,62 +398,6 @@ class TESClient(ABC):
     
 ########################################################
 
-    ### refactor this to use the pytes classes
-    def generate_tes_task(self,
-                         query: str,
-                         name: str = "analysis test",
-                         image: str = None,
-                         db_config: Dict[str, str] = None,
-                         output_path: str = "/outputs") -> Dict[str, Any]:
-        """
-        Generate a TES task JSON configuration.
-        
-        Args:
-            query (str): SQL query to execute
-            name (str): Name of the analysis task
-            image (str): Docker image to use (uses default if None)
-            db_config (Dict[str, str]): Database configuration (uses default if None)
-            output_path (str): Path for output files
-            
-        Returns:
-            Dict[str, Any]: TES task configuration
-        """
-        if image is None:
-            image = self.default_image
-        
-        if db_config is None:
-            db_config = self.default_db_config
-        
-        task = {
-            "name": name,
-            "inputs": [],
-            "outputs": [
-                {
-                    "url": "s3://beacon7283outputtre",
-                    "path": output_path,
-                    "type": "DIRECTORY",
-                    "name": "workdir"
-                }
-            ],
-            "executors": [
-                {
-                    "image": image,
-                    "command": [
-                        f"--Connection=Host={db_config['host']}:{db_config['port']};Username={db_config['username']};Password={db_config['password']};Database={db_config['name']}",
-                        f"--Output={output_path}/output",
-                        f"--Query={query}"
-                    ],
-                    "env": {
-                        "DATASOURCE_DB_DATABASE": db_config['name'],
-                        "DATASOURCE_DB_HOST": db_config['host'],
-                        "DATASOURCE_DB_PASSWORD": db_config['password'],
-                        "DATASOURCE_DB_USERNAME": db_config['username']
-                    },
-                    "workdir": "/app"
-                }
-            ]
-        }
-        return task
 
     def create_tes_message(self, name: str = "analysis test") -> tes.Task:
         """
@@ -515,125 +452,8 @@ class TESClient(ABC):
         """
         with open(output_file, 'w') as f:
             json.dump(task, f, indent=4)
-    
-    def generate_submission_template(
-        self,
-        name: str = "Analysis Submission Test",
-        description: str = "Federated analysis task",
-        tres: list = ["Nottingham"],
-        project: str = None,
-        output_bucket: str = None,
-        output_path: str = "/outputs",
-        executors: Optional[List[Dict[str, Any]]] = None,
-        image: str = None,
-        db_config: dict = None,
-        query: str = None,
-        analysis_type: str = None
-    ) -> tuple[dict, int]:
-        """
-        Generate a submission template JSON configuration.
-        
-        Args:
-            name (str): Name of the analysis submission
-            description (str): Description of the analysis task
-            tres (list): List of TREs to run the analysis on
-            project (str): Project name (defaults to TRE_FX_PROJECT env var)
-            output_bucket (str): S3 bucket name for outputs (defaults to MINIO_OUTPUT_BUCKET env var)
-            output_path (str): Path for output files
-            executors (Optional[List[Dict[str, Any]]]): List of executor dictionaries to use (old format, creates plain dicts)
-            image (str): Docker image to use
-            db_config (dict): Database configuration
-            query (str): SQL query to execute
-            analysis_type (str): Type of analysis to perform (e.g., 'mean', 'variance', 'PMCC', etc.)
-        
-        Returns:
-            tuple[dict, int]: Submission template configuration and number of TREs
-        """
-        # Use environment variables for project and output bucket if not provided
-        project = project or os.getenv('TRE_FX_PROJECT')
-        if not project:
-            raise ValueError("TRE_FX_PROJECT environment variable is required when project parameter is not provided")
-        
-        output_bucket = output_bucket or os.getenv('MINIO_OUTPUT_BUCKET')
-        if not output_bucket:
-            raise ValueError("MINIO_OUTPUT_BUCKET environment variable is required when output_bucket parameter is not provided")
-        
-        if image is None:
-            image = self.default_image
-        
-        if db_config is None:
-            db_config = self.default_db_config
-        
-        # If a TES task is provided, use its executor configuration
-        if query is None:
-            query = f"SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 21490742"
-        
-        if analysis_type is None:
-            raise ValueError("analysis_type parameter is required")
-        
-        # Construct database connection string in PostgreSQL format
-        db_connection_string = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['name']}"
-        
-        # Output filename without extension (will be .json or .csv based on output-format)
-        output_filename = f"{output_path}/output"
-        
-        if executors is None:
-            executor: Dict[str, Any] = {
-                "image": image,
-                "command": [
-                    f"--user-query={query}",
-                    f"--analysis={analysis_type}",
-                    f"--db-connection={db_connection_string}",
-                    f"--output-filename={output_filename}",
-                    "--output-format=json"
-                ],
-                "env": {
-                    "DATASOURCE_DB_DATABASE": db_config['name'],
-                    "DATASOURCE_DB_HOST": db_config['host'],
-                    "DATASOURCE_DB_PASSWORD": db_config['password'],
-                    "DATASOURCE_DB_USERNAME": db_config['username']
-                },
-                "workdir": "/app"
-            }
-            executors = [executor]
-
-        template = {
-            "id": None,
-            "name": name,
-            "description": description,
-            "inputs": None,
-            "outputs": [
-                {
-                    "name": "workdir",
-                    "description": "analysis test output",
-                    "url": f"s3://{output_bucket}",
-                    "path": output_path,
-                    "type": "DIRECTORY"
-                }
-            ],
-            "resources": None,
-            "executors": executors,
-            "volumes": None,
-            "tags": {
-                "Project": project,
-                "tres": "|".join(tres)
-            },
-            "logs": None,
-            "creation_time": None
-        }
-        return template, len(tres)
-    
-    def save_submission_template(self, template: Dict[str, Any], output_file: str):
-        """
-        Save the submission template configuration to a JSON file.
-        
-        Args:
-            template (Dict[str, Any]): Submission template configuration
-            output_file (str): Path to save the JSON file
-        """
-        with open(output_file, 'w') as f:
-            json.dump(template, f, indent=4)
-    
+      
+  
     def generate_curl_command(self, template: Dict[str, Any]) -> str:
         """
         Generate a curl command for submitting the template.
