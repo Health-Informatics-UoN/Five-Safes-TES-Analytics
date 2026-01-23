@@ -38,7 +38,7 @@ class AnalysisEngine:
         if project is None:
             project = os.getenv('5STES_PROJECT')
             if not project:
-                raise ValueError("TRE_FX_PROJECT environment variable is required when project parameter is not provided")
+                raise ValueError("5STES_PROJECT environment variable is required when project parameter is not provided")
         
         self.project = project
         self.tes_client = tes_client
