@@ -50,7 +50,7 @@ class BunnyTES(tes_client.TESClient):
             "DATASOURCE_DB_PASSWORD": self.default_db_config['password'],
             "DATASOURCE_DB_USERNAME": self.default_db_config['username'],
             "DATASOURCE_DB_PORT": self.default_db_config['port'],
-            "DATASOURCE_SQL_SCHEMA": self.default_db_config.get('schema'),
+            "DATASOURCE_DB_SCHEMA": self.default_db_config['schema'],
             "TASK_API_BASE_URL": self.task_api_base_url,
             "TASK_API_USERNAME": self.task_api_username,
             "TASK_API_PASSWORD": self.task_api_password,
@@ -59,42 +59,50 @@ class BunnyTES(tes_client.TESClient):
         }
         return self.env
 
-    def set_command(self, output_path: str, code: str) -> List[str]:
+    def set_command(self, output_path: str, analysis: str = "DISTRIBUTION") -> List[str]:
         """
         Set the command for a TES task.
         
         Args:
             output_path (str): Path for output files
-            code (str): Code parameter for bunny (e.g., 'DEMOGRAPHICS', 'PROCEDURES')
+            analysis (str): Analysis parameter for bunny (e.g., 'distribution', 'demographics')
         """
+
+        code_analysis_pairs = {
+        "distribution": ("GENERIC", "DISTRIBUTION"),
+        "demographics": ("DEMOGRAPHICS", "DEMOGRAPHICS")
+        }
+
+        code, analysis = code_analysis_pairs[analysis.lower()]
 
         self.command = [
             f"bunny",
             f"--body-json",
-            f"{{\"code\":\"{code}\",\"analysis\":\"DISTRIBUTION\",\"uuid\":\"123\",\"collection\":\"test\",\"owner\":\"me\"}}",
+            f"{{\"code\":\"{code}\",\"analysis\":\"{analysis}\",\"uuid\":\"123\",\"collection\":\"test\",\"owner\":\"me\"}}",
             f"--output",
             f"{output_path}/output.json",
-            
-        ]
+            f"--no-encode"
+                
+            ]
         return self.command
 
-    def set_executors(self, workdir = "/app", output_path="/outputs", code: str = "DEMOGRAPHICS") -> Union[tes.Executor, List[tes.Executor]]:
+    def set_executors(self, workdir = "/app", output_path="/outputs", analysis: str = "DISTRIBUTION") -> Union[tes.Executor, List[tes.Executor]]:
         """
         Set the executors for a TES task.
         """
         self.executors = [tes.Executor(image=self.default_image, 
-        command=self.set_command(output_path, code), 
+        command=self.set_command(output_path, analysis), 
         env=self.set_env(), 
         workdir=workdir)]
         return self.executors
 
-    def set_tes_messages(self, name: str = "test", code: str = "DEMOGRAPHICS") -> None:
+    def set_tes_messages(self, name: str = "test", analysis: str = "DISTRIBUTION") -> None:
         """
         Set the TES message for a TES task.
         """
         self.set_inputs()
         self.set_outputs(name=name, output_path="/outputs", output_type="DIRECTORY", url = "", description = "")
-        self.set_executors(workdir="/app", output_path="/outputs", code=code)
+        self.set_executors(workdir="/app", output_path="/outputs", analysis=analysis)
         self.create_tes_message(name=name)
         self.create_FiveSAFES_TES_message()
         return None
@@ -102,5 +110,6 @@ class BunnyTES(tes_client.TESClient):
 if __name__ == "__main__":
     bunny_tes = BunnyTES()
 
+    #defaults to distribution analysis
     bunny_tes.set_tes_messages(name="test")
     pass

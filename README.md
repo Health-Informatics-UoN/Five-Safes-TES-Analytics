@@ -59,22 +59,19 @@ from analysis_engine import AnalysisEngine
 from analytics_tes import AnalyticsTES
 from analyser import Analyser
 from string import Template
-
-
-# Initialize the engine (uses environment variables automatically)
-engine = AnalysisEngine("your_token", project="YourProject")
+import os
 
 
 # Will use 5STES_PROJECT from environment and 5STES_TOKEN from environment
 analytics_tes = AnalyticsTES()
-engine = AnalysisEngine(token ="your_token", tes_client=analytics_tes) 
+engine = AnalysisEngine(tes_client=analytics_tes) 
 analyser = Analyser(engine)
 sql_schema = os.getenv("SQL_SCHEMA", "public")
 
 
 
 # Define your own SQL query
-custom_query = """WITH user_query AS (
+query_template = Template("""WITH user_query AS (
   SELECT value_as_number FROM $schema.measurement 
   WHERE measurement_concept_id = 21490742
   AND value_as_number IS NOT NULL
@@ -82,22 +79,15 @@ custom_query = """WITH user_query AS (
 SELECT
   COUNT(value_as_number) AS n,
   SUM(value_as_number) AS total
-FROM user_query;"""
+FROM user_query;""")
 
-custom_query = custom_query.safe_substitute(schema=sql_schema)
+custom_query = query_template.safe_substitute(schema=sql_schema)
 
 # Run the analysis
-result = engine.run_analysis(
-    analysis_type="mean",
-    query=custom_query,
-    tres=["Nottingham", "Nottingham 2"]
-)
-
-
 result = analyser.run_analysis(
     analysis_type="mean",
     task_name="DEMO: mean analysis test",
-    user_query=user_query,
+    user_query=custom_query,
     tres=["Nottingham","Nottingham 2"]
 )
 

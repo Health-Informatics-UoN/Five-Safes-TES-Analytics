@@ -99,8 +99,7 @@ if __name__ == "__main__":
 
     print("Running metadata analysis...")
     metadata_result = metadata.get_metadata(
-        task_name="DEMO: metadata test",
-        code="DEMOGRAPHICS",
+        task_name="DEMO: metadata test"
     )
 
     print(f"Metadata analysis result: {metadata_result['result']}")

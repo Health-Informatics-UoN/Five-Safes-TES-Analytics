@@ -543,7 +543,7 @@ class TestBunnyTES:
         assert "DATASOURCE_DB_PASSWORD" in env
         assert "DATASOURCE_DB_USERNAME" in env
         assert "DATASOURCE_DB_PORT" in env
-        assert "DATASOURCE_SQL_SCHEMA" in env
+        assert "DATASOURCE_DB_SCHEMA" in env
         
         # Bunny-specific variables
         assert "TASK_API_BASE_URL" in env
@@ -553,7 +553,7 @@ class TestBunnyTES:
         assert "BUNNY_LOGGER_LEVEL" in env
         
         # Verify values
-        assert env["DATASOURCE_SQL_SCHEMA"] == 'public'
+        assert env["DATASOURCE_DB_SCHEMA"] == 'public'
         assert env["COLLECTION_ID"] == 'test-collection-123'
         assert env["BUNNY_LOGGER_LEVEL"] == 'DEBUG'
         assert env["TASK_API_BASE_URL"] == 'http://task-api.example.com'
@@ -810,7 +810,7 @@ class TestMetadataTESIntegration:
         assert executor.env["COLLECTION_ID"] == 'metadata-collection'
         assert executor.env["BUNNY_LOGGER_LEVEL"] == 'INFO'
         assert executor.env["TASK_API_BASE_URL"] == 'http://api.bunny.com'
-        assert executor.env["DATASOURCE_SQL_SCHEMA"] == 'cdm'
+        assert executor.env["DATASOURCE_DB_SCHEMA"] == 'cdm'
         
         # Verify tags for FiveSAFES
         assert task.tags is not None
