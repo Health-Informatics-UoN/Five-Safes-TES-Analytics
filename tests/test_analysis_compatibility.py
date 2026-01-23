@@ -6,7 +6,7 @@ import pytest
 import numpy as np
 from unittest.mock import Mock, patch
 from analysis_engine import AnalysisEngine
-from analyser import Analyser
+from analysis_runner import AnalysisRunner
 from analytics_tes import AnalyticsTES
 
 
@@ -18,7 +18,7 @@ class TestAnalysisCompatibility:
         """Set up test fixtures."""
         tes_client = AnalyticsTES()
         analysis_engine = AnalysisEngine(tes_client, "test_token", "test_project")
-        return Analyser(analysis_engine)
+        return AnalysisRunner(analysis_engine)
     
     @patch('analytics_tes.AnalyticsTES')
     @patch('analysis_engine.MinIOClient')
@@ -43,10 +43,10 @@ class TestAnalysisCompatibility:
         mock_minio_instance.get_object_smart.return_value = "n,total\n10,100\n"
         mock_minio.return_value = mock_minio_instance
         
-        # Create analyser after setting up mocks
+        # Create analysis_runner after setting up mocks
         tes_client = mock_tes_instance  # Use the mocked instance
         analysis_engine = AnalysisEngine(tes_client, "test_token", "test_project")
-        engine = Analyser(analysis_engine)
+        engine = AnalysisRunner(analysis_engine)
         
         # Mock data processor to return raw data that will be processed by analysis class
         raw_data = ["n,total\n10,100\n", "n,total\n15,150\n"]
@@ -118,10 +118,10 @@ class TestAnalysisCompatibility:
         mock_minio_instance.get_object_smart.side_effect = lambda bucket, path: variance_results.pop(0) if variance_results else None
         mock_minio.return_value = mock_minio_instance
         
-        # Create analyser after setting up mocks
+        # Create analysis_runner after setting up mocks
         tes_client = mock_tes_instance  # Use the mocked instance
         analysis_engine = AnalysisEngine(tes_client, "test_token", "test_project")
-        engine = Analyser(analysis_engine)
+        engine = AnalysisRunner(analysis_engine)
         
         # Mock data processor to return aggregated variance data
         aggregated_variance_data = {
@@ -208,7 +208,7 @@ class TestAnalysisCompatibility:
         Then runs a compatible mean analysis on the same stored data.
         """
         from analysis_engine import AnalysisEngine
-        from analyser import Analyser
+        from analysis_runner import AnalysisRunner
         from unittest.mock import Mock
         
         # Create mocked TES client to avoid real HTTP requests
@@ -220,9 +220,9 @@ class TestAnalysisCompatibility:
         mock_tes_client.create_FiveSAFES_TES_message.return_value = Mock()
         mock_tes_client.task = Mock()
         
-        # Create analyser and mock the components
+        # Create analysis_runner and mock the components
         analysis_engine = AnalysisEngine(mock_tes_client, "test_token", "test_project")
-        engine = Analyser(analysis_engine)
+        engine = AnalysisRunner(analysis_engine)
         
         # Mock data processor to return raw data that will be processed by analysis class
         # This simulates the aggregated data from multiple TREs in CSV format

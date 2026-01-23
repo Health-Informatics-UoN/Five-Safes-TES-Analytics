@@ -57,7 +57,7 @@ poetry install
 ```python
 from analysis_engine import AnalysisEngine
 from analytics_tes import AnalyticsTES
-from analyser import Analyser
+from analysis_runner import AnalysisRunner
 from string import Template
 import os
 
@@ -65,7 +65,7 @@ import os
 # Will use 5STES_PROJECT from environment and 5STES_TOKEN from environment
 analytics_tes = AnalyticsTES()
 engine = AnalysisEngine(tes_client=analytics_tes) 
-analyser = Analyser(engine)
+analysis_runner = AnalysisRunner(engine)
 sql_schema = os.getenv("SQL_SCHEMA", "public")
 
 
@@ -84,7 +84,7 @@ FROM user_query;""")
 custom_query = query_template.safe_substitute(schema=sql_schema)
 
 # Run the analysis
-result = analyser.run_analysis(
+result = analysis_runner.run_analysis(
     analysis_type="mean",
     task_name="DEMO: mean analysis test",
     user_query=custom_query,

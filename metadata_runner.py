@@ -4,7 +4,7 @@ from bunny_tes import BunnyTES
 from data_processor import DataProcessor
 import os
 
-class Metadata:
+class MetadataRunner:
     def __init__(self, analysis_engine: AnalysisEngine):
         self.analysis_engine = analysis_engine
         
@@ -93,14 +93,14 @@ class Metadata:
 if __name__ == "__main__":
 
     engine = AnalysisEngine(tes_client=BunnyTES())
-    metadata = Metadata(engine)
+    metadata_runner = MetadataRunner(engine)
 
     sql_schema = os.getenv("SQL_SCHEMA", "public")
 
     print("Running metadata analysis...")
-    metadata_result = metadata.get_metadata(
+    metadata_result = metadata_runner.get_metadata(
         task_name="DEMO: metadata test"
     )
 
     print(f"Metadata analysis result: {metadata_result['result']}")
-    print(f"Stored aggregated data: {metadata.aggregated_data}")
+    print(f"Stored aggregated data: {metadata_runner.aggregated_data}")

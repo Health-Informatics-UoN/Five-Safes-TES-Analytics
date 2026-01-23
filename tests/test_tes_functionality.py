@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from analytics_tes import AnalyticsTES
 from bunny_tes import BunnyTES
-from metadata import Metadata
+from metadata_runner import MetadataRunner
 from analysis_engine import AnalysisEngine
 from tes_client import TESClient
 import tes
@@ -652,8 +652,8 @@ class TestBunnyTES:
         assert "TASK_API_BASE_URL" in env
 
 
-class TestMetadata:
-    """Test cases for Metadata class."""
+class TestMetadataRunner:
+    """Test cases for MetadataRunner class."""
     
     @pytest.fixture
     def mock_engine(self):
@@ -665,41 +665,41 @@ class TestMetadata:
         return engine
     
     @pytest.fixture
-    def metadata(self, mock_engine):
-        """Set up Metadata instance with mock engine."""
-        return Metadata(mock_engine)
+    def metadata_runner(self, mock_engine):
+        """Set up MetadataRunner instance with mock engine."""
+        return MetadataRunner(mock_engine)
     
-    def test_metadata_initialization(self, metadata, mock_engine):
-        """Test that Metadata initializes correctly."""
-        assert metadata.analysis_engine == mock_engine
-        assert metadata.data_processor is not None
-        assert isinstance(metadata.aggregated_data, dict)
+    def test_metadata_initialization(self, metadata_runner, mock_engine):
+        """Test that MetadataRunner initializes correctly."""
+        assert metadata_runner.analysis_engine == mock_engine
+        assert metadata_runner.data_processor is not None
+        assert isinstance(metadata_runner.aggregated_data, dict)
     
-    def test_postprocess_metadata(self, metadata):
+    def test_postprocess_metadata(self, metadata_runner):
         """Test postprocess_metadata returns raw data unchanged (placeholder)."""
         raw_data = {"test_key": "test_value", "count": 42}
-        result = metadata.postprocess_metadata(raw_data)
+        result = metadata_runner.postprocess_metadata(raw_data)
         
         # Placeholder: just returns the raw data unchanged
         assert result == raw_data
         
-    def test_postprocess_metadata_list(self, metadata):
+    def test_postprocess_metadata_list(self, metadata_runner):
         """Test postprocess_metadata handles list data (placeholder)."""
         raw_data = [{"count": 100}, {"count": 150}]
-        result = metadata.postprocess_metadata(raw_data)
+        result = metadata_runner.postprocess_metadata(raw_data)
         
         # Placeholder: just returns the raw data unchanged
         assert result == raw_data
     
-    def test_get_metadata(self, metadata):
+    def test_get_metadata(self, metadata_runner):
         """Test get_metadata workflow with placeholder aggregation."""
         # Configure mock engine methods
-        metadata.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
+        metadata_runner.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
         test_data = [{"metadata": "test_data"}]
-        metadata.analysis_engine._submit_and_collect_results.return_value = ("task-123", test_data)
+        metadata_runner.analysis_engine._submit_and_collect_results.return_value = ("task-123", test_data)
         
         # Call get_metadata
-        result = metadata.get_metadata(
+        result = metadata_runner.get_metadata(
             tres=['TRE1', 'TRE2'],
             task_name="test_metadata",
             bucket="test-bucket"
@@ -715,51 +715,51 @@ class TestMetadata:
         # Placeholder: result should be the raw data passed through
         assert result['result'] == test_data
     
-    def test_get_metadata_calls_tes_methods(self, metadata):
+    def test_get_metadata_calls_tes_methods(self, metadata_runner):
         """Test that get_metadata calls the correct TES methods."""
-        metadata.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
-        metadata.analysis_engine._submit_and_collect_results.return_value = ("task-456", [{"data": "test"}])
+        metadata_runner.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
+        metadata_runner.analysis_engine._submit_and_collect_results.return_value = ("task-456", [{"data": "test"}])
         
         # Call get_metadata
-        metadata.get_metadata(tres=['TRE1'])
+        metadata_runner.get_metadata(tres=['TRE1'])
         
         # Verify TES client methods were called
-        metadata.analysis_engine.tes_client.set_tes_messages.assert_called_once()
-        metadata.analysis_engine.tes_client.set_tags.assert_called_once()
-        metadata.analysis_engine.tes_client.create_FiveSAFES_TES_message.assert_called_once()
+        metadata_runner.analysis_engine.tes_client.set_tes_messages.assert_called_once()
+        metadata_runner.analysis_engine.tes_client.set_tags.assert_called_once()
+        metadata_runner.analysis_engine.tes_client.create_FiveSAFES_TES_message.assert_called_once()
     
-    def test_get_metadata_stores_raw_data(self, metadata):
+    def test_get_metadata_stores_raw_data(self, metadata_runner):
         """Test that get_metadata stores raw data (placeholder - no aggregation yet)."""
-        metadata.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
+        metadata_runner.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
         
         # Mock data from two TREs
         mock_data = [
             {"count": 100, "mean": 25.5},
             {"count": 150, "mean": 30.2}
         ]
-        metadata.analysis_engine._submit_and_collect_results.return_value = ("task-789", mock_data)
+        metadata_runner.analysis_engine._submit_and_collect_results.return_value = ("task-789", mock_data)
         
-        result = metadata.get_metadata(tres=['TRE1', 'TRE2'])
+        result = metadata_runner.get_metadata(tres=['TRE1', 'TRE2'])
         
         # TODO: Once aggregation is implemented, this test should verify proper aggregation
         # For now, verify that raw data is passed through unchanged
         assert result['result'] == mock_data
         
         # Verify raw data was stored in aggregated_data
-        assert 'raw_data' in metadata.aggregated_data
-        assert metadata.aggregated_data['raw_data'] == mock_data
+        assert 'raw_data' in metadata_runner.aggregated_data
+        assert metadata_runner.aggregated_data['raw_data'] == mock_data
     
-    def test_get_metadata_error_handling(self, metadata):
+    def test_get_metadata_error_handling(self, metadata_runner):
         """Test that get_metadata handles errors properly."""
-        metadata.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
-        metadata.analysis_engine._submit_and_collect_results.side_effect = Exception("TES submission failed")
+        metadata_runner.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
+        metadata_runner.analysis_engine._submit_and_collect_results.side_effect = Exception("TES submission failed")
         
         # Should raise the exception
         with pytest.raises(Exception, match="TES submission failed"):
-            metadata.get_metadata(tres=['TRE1'])
+            metadata_runner.get_metadata(tres=['TRE1'])
 
 
-class TestMetadataTESIntegration:
+class TestMetadataRunnerTESIntegration:
     """Integration tests for metadata TES message creation."""
     
     @pytest.fixture

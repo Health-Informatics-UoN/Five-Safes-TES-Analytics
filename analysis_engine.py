@@ -17,7 +17,7 @@ class AnalysisEngine:
     """
     Generic orchestrator class for TES task management.
     Handles task submission, polling, and result collection.
-    Analysis-specific logic is handled by the Analyser class.
+    Analysis-specific logic is handled by the AnalysisRunner class.
     """
     
     def __init__(self, tes_client: TESClient, token: str = None, project: str = None):
