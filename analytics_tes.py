@@ -67,13 +67,3 @@ class AnalyticsTES(tes_client.TESClient):
         self.create_tes_message(name=name)
         self.create_FiveSAFES_TES_message()
         return None
-
-if __name__ == "__main__":
-    analytics_tes = AnalyticsTES()
-    
-    query = """SELECT value_as_number FROM public.measurement 
-WHERE measurement_concept_id = 21490742
-AND value_as_number IS NOT NULL"""
-    
-    analytics_tes.set_tes_messages(query=query, analysis_type="mean", name="workdir", output_format="json")
-    pass

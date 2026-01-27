@@ -1,6 +1,7 @@
 from analysis_engine import AnalysisEngine
 from typing import List, Dict, Any, Optional, Union
 from analytics_tes import AnalyticsTES
+from tes_client import TESClient
 from data_processor import DataProcessor
 from statistical_analyzer import StatisticalAnalyzer
 import numpy as np
@@ -9,9 +10,12 @@ from string import Template
 
 
 class AnalysisRunner:
-    def __init__(self, analysis_engine: AnalysisEngine):
-        self.analysis_engine = analysis_engine
-        self.tes_client = analysis_engine.tes_client
+    def __init__(self, 
+                    tes_client: TESClient = AnalyticsTES(), 
+                    token: str = None, 
+                    project: str = None):
+        self.analysis_engine = AnalysisEngine(tes_client=tes_client, token=token, project=project)
+        self.tes_client = self.analysis_engine.tes_client
         # Own instances for aggregation and analysis
         self.data_processor = DataProcessor()
         self.statistical_analyzer = StatisticalAnalyzer()
@@ -342,9 +346,12 @@ if __name__ == "__main__":
     from string import Template
     
     # Will use 5STES_PROJECT from environment and 5STES_TOKEN from environment
-    analytics_tes = AnalyticsTES()
-    engine = AnalysisEngine(tes_client=analytics_tes) 
-    analysis_runner = AnalysisRunner(engine)
+    #analytics_tes = AnalyticsTES()
+    #engine = AnalysisEngine(tes_client=analytics_tes) 
+    #analysis_runner = AnalysisRunner(engine)
+    analysis_runner = AnalysisRunner()
+
+    ## need this to populate the query template
     sql_schema = os.getenv("SQL_SCHEMA", "public")
     
     # Example: Run variance analysis first, then mean analysis on the same data

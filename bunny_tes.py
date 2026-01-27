@@ -107,9 +107,3 @@ class BunnyTES(tes_client.TESClient):
         self.create_FiveSAFES_TES_message()
         return None
 
-if __name__ == "__main__":
-    bunny_tes = BunnyTES()
-
-    #defaults to distribution analysis
-    bunny_tes.set_tes_messages(name="test")
-    pass

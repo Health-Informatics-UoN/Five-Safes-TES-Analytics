@@ -276,25 +276,25 @@ class TESClient(ABC):
             raise ValueError("TES_DOCKER_IMAGE environment variable is required")
         
         default_db_port = default_db_port or os.getenv('DB_PORT')
-        if not default_db_port:
-            raise ValueError("DB_PORT environment variable is required")
+        #if not default_db_port:
+        #    raise ValueError("DB_PORT environment variable is required")
         
         if default_db_config is None:
             db_host = os.getenv('DB_HOST')
-            if not db_host:
-                raise ValueError("DB_HOST environment variable is required")
+        #    if not db_host:
+        #        raise ValueError("DB_HOST environment variable is required")
             
             db_username = os.getenv('DB_USERNAME')
-            if not db_username:
-                raise ValueError("DB_USERNAME environment variable is required")
+        #    if not db_username:
+        #        raise ValueError("DB_USERNAME environment variable is required")
             
             db_password = os.getenv('DB_PASSWORD')
-            if not db_password:
-                raise ValueError("DB_PASSWORD environment variable is required")
+        #    if not db_password:
+        #        raise ValueError("DB_PASSWORD environment variable is required")
             
             db_name = os.getenv('DB_NAME')
-            if not db_name:
-                raise ValueError("DB_NAME environment variable is required")
+        #    if not db_name:
+        #        raise ValueError("DB_NAME environment variable is required")
             
             self.default_db_config = {
                 "host": db_host,
@@ -547,60 +547,3 @@ class TESClient(ABC):
             ## if it fails again, it will raise an exception
             #raise
 
-
-
-
-if __name__ == "__main__":
-    # Test URL construction
-    print("Testing URL construction...")
-    
-    # Create a test client with a sample base URL
-    test_base_url = "https://api.example.com/"
-    client = TESClient(base_url=test_base_url)
-    
-    # Test URL joining
-    print(f"Base URL: {client.base_url}")
-    print(f"TES URL: {client.TES_url}")
-    print(f"Submission URL: {client.submission_url}")
-    
-    # Test API URL building
-    tasks_url = client._build_api_url(client.TES_url, "tasks")
-    print(f"Tasks URL: {tasks_url}")
-    
-    # Test with query parameters
-    status_url = client._build_api_url(client.TES_url, "123", {"view": "FULL"})
-    print(f"Status URL: {status_url}")
-    
-    # Test with trailing slashes using pathlib directly
-    parsed = urlparse("https://api.example.com/")
-    path = Path(parsed.path) / "v1" / "tasks"
-    test_url = f"{parsed.scheme}://{parsed.netloc}{path}"
-    print(f"Test URL with trailing slash: {test_url}")
-    
-    # Example usage
-    print("\n" + "="*50)
-    print("Example usage:")
-    
-    # Generate a simple task
-    task = client.generate_tes_task(
-        query="SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 21490742",
-        name="Test Analysis"
-    )
-    
-    # Save to file
-    client.save_tes_task(task, "tes-task.json")
-    
-    # Generate submission template
-    template, n_tres = client.generate_submission_template(
-        name="Test Submission",
-        tres=["Nottingham", "Nottingham 2"],
-        project="TestProject"
-    )
-    
-    # Save template
-    client.save_submission_template(template, "submission_template.json")
-    
-    # Generate curl command
-    curl_cmd = client.generate_curl_command(template)
-    print("\nCurl command for submission:")
-    print(curl_cmd) 

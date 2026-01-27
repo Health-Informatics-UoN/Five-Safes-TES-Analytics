@@ -1,13 +1,17 @@
 from analysis_engine import AnalysisEngine
 from typing import List, Dict, Any
 from bunny_tes import BunnyTES
+from tes_client import TESClient
 from data_processor import DataProcessor
 import os
 
 class MetadataRunner:
-    def __init__(self, analysis_engine: AnalysisEngine):
-        self.analysis_engine = analysis_engine
-        
+    def __init__(self, 
+                    tes_client: TESClient = BunnyTES(), 
+                    token: str = None, 
+                    project: str = None):
+        self.analysis_engine = AnalysisEngine(tes_client=tes_client, token=token, project=project)
+        self.tes_client = self.analysis_engine.tes_client
         ## don't know whether to use the same processor, or create a new one.
         self.data_processor = DataProcessor()
         
@@ -92,9 +96,9 @@ class MetadataRunner:
 
 if __name__ == "__main__":
 
-    engine = AnalysisEngine(tes_client=BunnyTES())
-    metadata_runner = MetadataRunner(engine)
-
+    #engine = AnalysisEngine(tes_client=BunnyTES())
+    #metadata_runner = MetadataRunner(engine)
+    metadata_runner = MetadataRunner()
     sql_schema = os.getenv("SQL_SCHEMA", "public")
 
     print("Running metadata analysis...")
