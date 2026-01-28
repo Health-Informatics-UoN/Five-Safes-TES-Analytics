@@ -1,4 +1,5 @@
-FROM ghcr.io/health-informatics-uon/hutch/bunny:1.6
+ARG BUNNY_VERSION=1.6
+FROM ghcr.io/health-informatics-uon/hutch/bunny:${BUNNY_VERSION}
 
 # Specify non-CLI "required" config so users don't have to
 ENV TASK_API_BASE_URL https://example.com

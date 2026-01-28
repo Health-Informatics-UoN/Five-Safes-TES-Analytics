@@ -1,19 +1,15 @@
-# This workflow is used for any merge to main and results in a built container image being pushed and tagged as a dev release
-# with commit hash and timestamp tags
-#
-# These are not stable or pre-release semver releases!
-name: Publish a Dev Release
+name: Publish a Bunny CLI image compatible with Five Safes TES. 
 
 on:
   push:
-    branches: [main] 
+    branches: [add-ci-build-for-bunny-analytics-image] 
 env:
-  image-name: five-safes-tes-analytics-dev 
+  image-name: five-safes-tes-analytics-bunny-cli
   repo-owner: ${{ github.repository_owner }}
   registry: ghcr.io
 
 jobs:
-  publish-analytics:
+  publish-analytics-bunny:
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -33,7 +29,17 @@ jobs:
           registry: ${{ env.registry }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-    
+
+      - name: Resolve latest Bunny release
+        id: bunny
+        run: |
+            TAG=$(gh api \
+            repos/health-informatics-uon/hutch-bunny/releases/latest \
+            --jq .tag_name)
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+        env:
+            GH_TOKEN: ${{ github.token }}
+
       - name: Docker Metadata action
         id: meta
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
@@ -56,18 +62,20 @@ jobs:
           # - version should be considered a semver candidate only, unless revision aligns with a git tag
           labels: |
             org.opencontainers.image.revision={{sha}}
-            org.opencontainers.image.version=dev
+            org.opencontainers.image.version=${{ steps.bunny.outputs.tag }}
             org.opencontainers.image.created={{date 'YYYY-MM-DD HH:mm:ss[Z]'}}
           # TODO: More Annotations may be desirable instead of labels for some metadata,
           # since we produce multiarch images
           annotations: |
-            org.opencontainers.image.description=Five Safes TES Analytics 
+            org.opencontainers.image.description=Five Safes TES Analytics Bunny CLI 
 
       - name: Build and push Docker images
         uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
         with:
-          context: "./docker"
-          file: "./docker/Dockerfile" 
+          context: "./docker/bunny-wrapper"
+          file: "./docker/bunny-wrapper/Dockerfile"
+          build-args: |
+            BUNNY_VERSION=${{ steps.bunny.outputs.tag }}
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
