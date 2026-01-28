@@ -35,7 +35,7 @@ jobs:
         run: |
             TAG=$(gh api \
             repos/health-informatics-uon/hutch-bunny/releases/latest \
-            --jq .tag_name)
+            --jq -r '.tag_name | ltrimstr("v")')
             echo "tag=$TAG" >> "$GITHUB_OUTPUT"
         env:
             GH_TOKEN: ${{ github.token }}
