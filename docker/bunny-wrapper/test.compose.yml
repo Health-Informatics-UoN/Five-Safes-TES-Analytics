@@ -29,7 +29,3 @@ services:
       postgresUsername: postgres
       postgresPassword: postgres
       BUNNY_LOGGER_LEVEL: DEBUG
-      TASK_API_BASE_URL: https://localhost:8080/link_connector_api
-      TASK_API_USERNAME: username
-      TASK_API_PASSWORD: password
-      COLLECTION_ID: collection_id
