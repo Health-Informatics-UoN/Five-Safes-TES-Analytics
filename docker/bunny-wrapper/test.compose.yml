@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: omop
+
+  omop-lite:
+    image: ghcr.io/health-informatics-uon/omop-lite
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PASSWORD: postgres
+      DB_NAME: omop
+      SYNTHETIC: true
+  bunny:
+    build: .
+    command:
+      - "--body /var/queries/availability.json"
+      - "--output /tmp/output.json"
+    volumes:
+      - ./availability.json:/var/queries/availability.json
+    environment:
+      postgresServer: db
+      postgresPort: 5432
+      postgresSchema: public
+      postgresDatabase: omop
+      postgresUsername: postgres
+      postgresPassword: postgres
+      BUNNY_LOGGER_LEVEL: DEBUG
+      TASK_API_BASE_URL: https://localhost:8080/link_connector_api
+      TASK_API_USERNAME: username
+      TASK_API_PASSWORD: password
+      COLLECTION_ID: collection_id
