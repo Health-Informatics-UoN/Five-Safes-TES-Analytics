@@ -1,3 +1,6 @@
+# This workflow builds and publishes a Bunny CLI wrapper image for Five Safes TES.
+# It tracks the latest released version of the upstream Bunny project and only
+# builds a new image when a corresponding Bunny-versioned image does not already exist.
 name: Publish a Bunny CLI image compatible with Five Safes TES. 
 
 on:
@@ -52,6 +55,8 @@ jobs:
             else
                 echo "exists=false" >> "$GITHUB_OUTPUT"
             fi
+      - name: Debug exists output
+        run: echo "Image exists? ${{ steps.exists.outputs.exists }}"
 
       - name: Docker Metadata action
         id: meta
@@ -72,7 +77,7 @@ jobs:
           labels: |
             org.opencontainers.image.revision={{sha}}
             org.opencontainers.image.version=${{ steps.bunny.outputs.tag }}
-            
+
           annotations: |
             org.opencontainers.image.description=Five Safes TES Analytics Bunny CLI 
 
