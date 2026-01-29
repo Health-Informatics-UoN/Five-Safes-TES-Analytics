@@ -55,8 +55,11 @@ jobs:
             else
                 echo "exists=false" >> "$GITHUB_OUTPUT"
             fi
-      - name: Debug exists output
-        run: echo "Image exists? ${{ steps.exists.outputs.exists }}"
+      - name: Debug step
+        run: | 
+            echo "Image exists? ${{ steps.exists.outputs.exists }}"
+            echo "Checking image: ghcr.io/${{ env.repo-owner }}/${{ env.image-name }}:${{ steps.bunny.outputs.tag }}"
+            echo docker manifest inspect echo "Checking image: ghcr.io/${{ env.repo-owner }}/${{ env.image-name }}:${{ steps.bunny.outputs.tag }}"
 
       - name: Docker Metadata action
         id: meta
