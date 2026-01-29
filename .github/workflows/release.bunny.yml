@@ -4,9 +4,6 @@
 name: Publish a Bunny CLI image compatible with Five Safes TES. 
 
 on:
-  push:
-    branches: [add-ci-build-for-bunny-analytics-image] 
-
   schedule:
     - cron: "0 0 * * *"  
 env:
@@ -56,13 +53,6 @@ jobs:
             else
                 echo "exists=false" >> "$GITHUB_OUTPUT"
             fi
-      - name: Debug step
-        run: | 
-            repo_owner_lower="${GITHUB_REPOSITORY_OWNER,,}"
-            image_url="ghcr.io/${repo_owner_lower}/${{ env.image-name }}:${{ steps.bunny.outputs.tag }}"
-            echo "Image exists? ${{ steps.exists.outputs.exists }}"
-            echo "Checking image: ghcr.io/${{ env.repo-owner }}/${{ env.image-name }}:${{ steps.bunny.outputs.tag }}"
-            echo "Checking $image_url"
 
       - name: Docker Metadata action
         id: meta
