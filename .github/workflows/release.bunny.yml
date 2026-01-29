@@ -3,6 +3,9 @@ name: Publish a Bunny CLI image compatible with Five Safes TES.
 on:
   push:
     branches: [add-ci-build-for-bunny-analytics-image] 
+
+  schedule:
+    - cron: "0 0 * * *"  
 env:
   image-name: five-safes-tes-analytics-bunny-cli
   repo-owner: ${{ github.repository_owner }}
@@ -39,37 +42,42 @@ jobs:
             echo "tag=$TAG" >> "$GITHUB_OUTPUT"
         env:
             GH_TOKEN: ${{ github.token }}
+      
+      - name: Check if image already exists
+        id: exists
+        run: |
+            if docker manifest inspect \
+                ghcr.io/${{ env.repo-owner }}/${{ env.image-name }}:${{ steps.bunny.outputs.tag }} >/dev/null 2>&1; then
+                echo "exists=true" >> "$GITHUB_OUTPUT"
+            else
+                echo "exists=false" >> "$GITHUB_OUTPUT"
+            fi
 
       - name: Docker Metadata action
         id: meta
+        if: steps.exists.outputs.exists == 'false'
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: ${{ env.registry }}/${{ env.repo-owner }}/${{ env.image-name }}
           # Tag notes:
-          # - RFC3339 is not suitable for docker tags, so we squash the date
-          # - We tag both the short (7-char prefixed) and full sha commit hashes; both are useful
-          # - `edge` represents latest main branch commit (potentially unstable)
+          # The purpose of this container is to act as a wrapper around the real bunny image, tracking the bunny version.
+          # Therefore we only include the Bunny semver tag. 
           tags: |
-            type=sha
-            ${{ github.sha }}
-            type=raw,value={{date 'YYYYMMDDHHmmss[Z]'}}
-            edge
+            type=raw,value=${{ steps.bunny.outputs.tag }}
           # Label notes:
-          # - Static labels are applied in the Dockerfile
-          # - Date format in `org.opencontainers.image.created` must be RFC3339
-          # - version should be considered a semver candidate only, unless revision aligns with a git tag
+          # - The image version tracks the upstream Bunny release version
+          # - This repository does not have its own independent semver lifecycle
           labels: |
             org.opencontainers.image.revision={{sha}}
             org.opencontainers.image.version=${{ steps.bunny.outputs.tag }}
-            org.opencontainers.image.created={{date 'YYYY-MM-DD HH:mm:ss[Z]'}}
-          # TODO: More Annotations may be desirable instead of labels for some metadata,
-          # since we produce multiarch images
+            
           annotations: |
             org.opencontainers.image.description=Five Safes TES Analytics Bunny CLI 
 
       - name: Build and push Docker images
+        if: steps.exists.outputs.exists == 'false'
         uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
         with:
           context: "./docker/bunny-wrapper"
