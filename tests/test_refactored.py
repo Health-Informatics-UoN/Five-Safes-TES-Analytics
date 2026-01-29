@@ -14,7 +14,6 @@ from typing import List, Dict, Any
 # Add the current directory to the path so we can import our modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from analysis_engine import AnalysisEngine
 from data_processor import DataProcessor
 from statistical_analyzer import StatisticalAnalyzer
 from tes_client import TESClient
@@ -163,70 +162,52 @@ class TestDataProcessor:
         assert "percentilesketch" in types
 
 
-class TestAnalysisEngine:
-    """Test cases for AnalysisEngine class."""
+class TestAnalysisRunner:
+    """Test cases for AnalysisRunner class (entrypoint for analytics workflows)."""
     
     @pytest.fixture
-    def engine(self):
-        """Set up test fixtures."""
-        return AnalysisEngine("test_token", "test_project")
+    def runner(self):
+        """Set up AnalysisRunner with mocked TES client (runner expects tes_client, token, project)."""
+        mock_tes_client = Mock()
+        mock_tes_client.submit_task.return_value = {"id": "123"}
+        mock_tes_client.get_task_status.return_value = {"status": 11, "description": "Completed"}
+        return AnalysisRunner(tes_client=mock_tes_client, token="test_token", project="test_project")
     
-    @patch('analysis_engine.TESClient')
     @patch('analysis_engine.MinIOClient')
-    def test_run_analysis(self, mock_minio, mock_tes, engine):
+    def test_run_analysis(self, mock_minio, runner):
         """Test running a complete analysis workflow."""
-        # Mock TES client
-        mock_tes_instance = Mock()
-        mock_tes_instance.submit_task.return_value = {"id": "123"}
-        # Mock get_task_status to return a proper dictionary with status
-        mock_tes_instance.get_task_status.return_value = {"status": 11, "description": "Completed"}
-        mock_tes.return_value = mock_tes_instance
-        
-        # Mock MinIO client
         mock_minio_instance = Mock()
         mock_minio_instance.get_object.return_value = "n,total\n10,100\n"
         mock_minio.return_value = mock_minio_instance
         
-
-        
-        # Mock data processor and statistical analyzer
+        runner.analysis_engine._submit_and_collect_results = Mock(
+            return_value=("123", ["n,total\n10,100\n", "n,total\n15,150\n"])
+        )
         DataProcessor.aggregate_data = Mock(return_value=np.array([[10, 100]]))
         StatisticalAnalyzer.analyze_data = Mock(return_value=10.0)
         
-        # Run analysis (no 'column' kwarg)
         user_query = "SELECT value_as_number FROM measurement WHERE concept_id = 123"
-
-
-        analytics_tes = mock_tes_instance
-        # Create engine after setting up mocks
-        engine = AnalysisEngine(tes_client=analytics_tes, token="test_token", project="test_project")
-
-        analysis_runner = AnalysisRunner(engine)
-
-        result = analysis_runner.run_analysis(
-            "mean", 
-            user_query, 
+        result = runner.run_analysis(
+            "mean",
+            user_query,
             ["TRE1", "TRE2"]
         )
         
-        # Verify result structure
         assert "analysis_type" in result
         assert "result" in result
         assert "task_id" in result
         assert "tres_used" in result
         assert "data_sources" in result
         assert "complete_query" in result
-        
         assert result["analysis_type"] == "mean"
         assert result["result"] == 10.0
         assert result["task_id"] == "123"
         assert result["tres_used"] == ["TRE1", "TRE2"]
         assert result["data_sources"] == 2
     
-    def test_get_analysis_requirements(self, engine):
-        """Test getting analysis requirements."""
-        analysis_runner = AnalysisRunner(engine)
-        requirements = analysis_runner.get_analysis_requirements("mean")
+    def test_get_analysis_requirements(self, runner):
+        """Test getting analysis requirements from AnalysisRunner."""
+        requirements = runner.get_analysis_requirements("mean")
         
         assert "return_format" in requirements
         assert "aggregation_function" in requirements
@@ -234,10 +215,9 @@ class TestAnalysisEngine:
         assert callable(requirements["aggregation_function"])
         assert callable(requirements["analysis_function"])
     
-    def test_get_supported_analysis_types(self, engine):
-        """Test getting supported analysis types."""
-        analysis_runner = AnalysisRunner(engine)
-        types = analysis_runner.get_supported_analysis_types()
+    def test_get_supported_analysis_types(self, runner):
+        """Test getting supported analysis types from AnalysisRunner."""
+        types = runner.get_supported_analysis_types()
         
         assert "mean" in types
         assert "variance" in types
@@ -251,10 +231,9 @@ class TestExampleFunctions:
     
     @pytest.fixture
     def analysis_runner(self):
-        """Set up test fixtures."""
-        mock_engine = Mock(spec=AnalysisEngine)
-        mock_engine.tes_client = Mock()
-        return AnalysisRunner(mock_engine)
+        """Set up AnalysisRunner with mocked TES client (runner expects tes_client, token, project)."""
+        mock_tes_client = Mock()
+        return AnalysisRunner(tes_client=mock_tes_client, token="test_token", project="test_project")
     
     @patch.object(AnalysisRunner, 'run_analysis')
     def test_run_mean_analysis_example(self, mock_run_analysis, analysis_runner):

@@ -311,7 +311,7 @@ class TESClient(ABC):
         self.task = None
 
 
-    def set_tags(self, tres: List[str] = None) -> Tags:
+    def set_tags(self, tres: List[str] = None) -> None:
         """
         Set the tags for a TES task. Tags are a class variable that is set when the client is initialized, but will also return the tags for consistency.
         """
@@ -340,7 +340,7 @@ class TESClient(ABC):
             "tres": tres_list  # Store as list
             })
         self.tags = tags
-        return tags
+
 
 
     
@@ -370,7 +370,7 @@ class TESClient(ABC):
 
 ########################################################
     @abstractmethod
-    def set_inputs(self, *args, **kwargs) -> tes.Input:
+    def set_inputs(self, *args, **kwargs) -> None:
         """
         Set the inputs for a TES task.
         Subclasses can define their own parameters.
@@ -378,7 +378,7 @@ class TESClient(ABC):
         pass
 
     @abstractmethod
-    def set_outputs(self, *args, **kwargs) -> tes.Output:
+    def set_outputs(self, *args, **kwargs) -> None:
         """
         Set the outputs for a TES task.
         Subclasses can define their own parameters.
@@ -389,22 +389,30 @@ class TESClient(ABC):
         pass
 
     @abstractmethod
-    def set_executors(self, *args, **kwargs) -> Union[tes.Executor, List[tes.Executor]]:
+    def set_executors(self, *args, **kwargs) -> None:
         """
         Set the executors for a TES task.
         Subclasses can define their own parameters.
         """
         pass
     
+    @abstractmethod
+    def set_tes_messages(self, *args, **kwargs) -> None:
+        """
+        Set the TES messages for a TES task. Typically will call set_inputs, set_outputs, and set_executors.
+        Subclasses can define their own parameters.
+        """
+        pass
 ########################################################
 
 
-    def create_tes_message(self, name: str = "analysis test") -> tes.Task:
+    def create_tes_message(self, task_name: str = "analysis test", task_description: str = "") -> tes.Task:
         """
         Create a TES message JSON configuration.
         
         Args:
-            name: str
+            task_name: str
+            task_description: str
             inputs: tes.Input
             outputs: tes.Output
             executors: Union[tes.Executor, List[tes.Executor]] - Single executor or list of executors
@@ -414,7 +422,8 @@ class TESClient(ABC):
             
 
         self.task = tes.Task(
-            name= name,
+            name= task_name,
+            description= task_description,
             inputs= self.inputs,
             outputs= self.outputs,
             executors= self.executors
@@ -494,6 +503,7 @@ class TESClient(ABC):
         if isinstance(template, tes.Task):
             template = template.as_dict()
 
+        ### adds a description to the 5STES message
         template["description"] = "test"
         headers = {
             'accept': 'text/plain',

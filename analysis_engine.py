@@ -50,23 +50,25 @@ class AnalysisEngine:
         """
         return [tre.strip() for tre in tres.split(',') if tre.strip()]
     
-    def setup_analysis(self, analysis_type: str, task_name: str = None, bucket: str = None, tres: List[str] = None) -> Tuple[str, str, List[str]]:
+    def setup_analysis(self, analysis_type: str, task_name: str = None, task_description: str = None, bucket: str = None, tres: List[str] = None) -> Tuple[str, str, str, List[str]]:
         """
         Set up common analysis parameters.
         
         Args:
             analysis_type (str): Type of analysis to perform
             task_name (str, optional): Name for the TES task
+            task_description (str, optional): Description for the TES task
             bucket (str, optional): MinIO bucket for outputs
             tres (List[str], optional): List of TREs to run analysis on
             
         Returns:
-            Tuple[str, str, List[str]]: (task_name, bucket, tres)
+            Tuple[str, str, str, List[str]]: (task_name, task_description, bucket, tres)
         """
         # Set default task name based on analysis type if not provided
         if task_name is None:
             task_name = f"analysis {analysis_type}"
-        
+        if task_description is None:
+            task_description = f"analysis {analysis_type} description"
         # Set default bucket from environment variable if not provided
         if bucket is None:
             bucket = os.getenv('MINIO_OUTPUT_BUCKET')
@@ -80,7 +82,7 @@ class AnalysisEngine:
             tres = self.parse_tres(tres_env)
         
         self.tres = tres
-        return task_name, bucket, tres
+        return task_name, task_description, bucket, tres
     
 
 

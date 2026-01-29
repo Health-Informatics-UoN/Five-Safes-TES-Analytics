@@ -24,15 +24,16 @@ class MetadataRunner:
     def get_metadata(self, 
                     tres: List[str] = None,
                     task_name: str = None,
+                    task_description: str = None,
                     bucket: str = None) -> Dict[str, Any]:
 
         analysis_type = "metadata"
 
-        task_name, bucket, tres = self.analysis_engine.setup_analysis(analysis_type, task_name, bucket, tres)
+        task_name, task_description, bucket, tres = self.analysis_engine.setup_analysis(analysis_type, task_name, task_description, bucket, tres)
 
         ### create the TES message for the metadata
         metadata_tes = self.analysis_engine.tes_client
-        metadata_tes.set_tes_messages(name=task_name)
+        metadata_tes.set_tes_messages(task_name=task_name, task_description=task_description)
         metadata_tes.set_tags(tres=self.analysis_engine.tres)
         metadata_tes.create_FiveSAFES_TES_message()
 
@@ -103,7 +104,8 @@ if __name__ == "__main__":
 
     print("Running metadata analysis...")
     metadata_result = metadata_runner.get_metadata(
-        task_name="DEMO: metadata test"
+        task_name="DEMO: metadata test",
+        task_description="This is a test description for the metadata analysis"
     )
 
     print(f"Metadata analysis result: {metadata_result['result']}")

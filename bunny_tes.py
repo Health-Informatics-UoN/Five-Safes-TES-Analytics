@@ -24,23 +24,23 @@ class BunnyTES(tes_client.TESClient):
             self.default_db_config['schema'] = os.getenv('SQL_SCHEMA')  # None if not set - will fail naturally if needed
 
    #### this section will be implemented for each type of task using the pytes classes. Note that many of these fields are set in the submission layer after submission.
-    def set_inputs(self) -> tes.Input:
+    def set_inputs(self) -> None:
         """
         Set the inputs for a TES task.
         """
         ## don't use tes.Input() because it will set type = 'FILE' rather than empty and not accepted by the TES server
         self.inputs = []
-        return self.inputs
+        return None
 
 ### is name required? Or even overwritten?
-    def set_outputs(self, name: str, output_path: str, output_type: str = "DIRECTORY", url: str = "", description: str = "") -> tes.Output:
+    def set_outputs(self, name: str, output_path: str, output_type: str = "DIRECTORY", url: str = "", description: str = "") -> None:
         """
         Set the outputs for a TES task.
         """
         self.outputs = [tes.Output(path=output_path, type=output_type, url=url, name=name, description=description)]
-        return self.outputs
+        return None
 
-    def set_env(self) -> Dict[str, str]:
+    def _set_env(self) -> None:
         """
         Set the environment variables for a TES task.
         """
@@ -57,9 +57,9 @@ class BunnyTES(tes_client.TESClient):
             "COLLECTION_ID": self.collection_id,
             "BUNNY_LOGGER_LEVEL": self.bunny_logger_level
         }
-        return self.env
+        return None
 
-    def set_command(self, output_path: str, analysis: str = "DISTRIBUTION") -> List[str]:
+    def _set_command(self, output_path: str, analysis: str = "DISTRIBUTION") -> None:
         """
         Set the command for a TES task.
         
@@ -84,26 +84,35 @@ class BunnyTES(tes_client.TESClient):
             f"--no-encode"
                 
             ]
-        return self.command
+        return None
 
-    def set_executors(self, workdir = "/app", output_path="/outputs", analysis: str = "DISTRIBUTION") -> Union[tes.Executor, List[tes.Executor]]:
+    def set_executors(self, workdir = "/app", output_path="/outputs", analysis: str = "DISTRIBUTION") -> None:
         """
         Set the executors for a TES task.
         """
-        self.executors = [tes.Executor(image=self.default_image, 
-        command=self.set_command(output_path, analysis), 
-        env=self.set_env(), 
-        workdir=workdir)]
-        return self.executors
+        self._set_command(output_path, analysis)
+        self._set_env()
+        self.executors = [tes.Executor(
+            image=self.default_image,
+            command=self.command,
+            env=self.env,
+            workdir=workdir,
+        )]
+        return None
 
-    def set_tes_messages(self, name: str = "test", analysis: str = "DISTRIBUTION") -> None:
+    def set_tes_messages(
+        self,
+        analysis: str = "DISTRIBUTION",
+        task_name: str = "test",
+        task_description: str = "",
+    ) -> None:
         """
         Set the TES message for a TES task.
         """
         self.set_inputs()
-        self.set_outputs(name=name, output_path="/outputs", output_type="DIRECTORY", url = "", description = "")
+        self.set_outputs(name="", output_path="/outputs", output_type="DIRECTORY", url = "", description = ""
         self.set_executors(workdir="/app", output_path="/outputs", analysis=analysis)
-        self.create_tes_message(name=name)
+        self.create_tes_message(task_name=task_name, task_description=task_description)
         self.create_FiveSAFES_TES_message()
         return None
 

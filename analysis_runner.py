@@ -27,6 +27,7 @@ class AnalysisRunner:
                     user_query: str = None,
                     tres: List[str] = None,
                     task_name: str = None,
+                    task_description: str = None,
                     bucket: str = None) -> Dict[str, Any]:
         """
         Run a complete federated analysis workflow.
@@ -36,13 +37,14 @@ class AnalysisRunner:
             user_query (str, optional): User's data selection query (without analysis calculations)
             tres (List[str], optional): List of TREs to run analysis on
             task_name (str, optional): Name for the TES task (defaults to "analysis {analysis_type}")
+            task_description (str, optional): Description for the TES task / output
             bucket (str, optional): MinIO bucket for outputs (defaults to MINIO_OUTPUT_BUCKET env var)
             
         Returns:
             Dict[str, Any]: Analysis results
         """
 
-        task_name, bucket, tres = self.analysis_engine.setup_analysis(analysis_type, task_name, bucket, tres)
+        task_name, task_description, bucket, tres = self.analysis_engine.setup_analysis(analysis_type, task_name, task_description, bucket, tres)
         
         # Check if we should run on existing data (returns early if so)
         existing_data_result = self.check_analysis_on_existing_data(analysis_type, user_query, tres)
@@ -50,10 +52,16 @@ class AnalysisRunner:
             return existing_data_result
         
         ### create the TES message for the analysis
-        analytics_tes = self.analysis_engine.tes_client
-        analytics_tes.set_tes_messages(query=user_query, analysis_type=analysis_type, name=task_name, output_format="json")
-        analytics_tes.set_tags(tres=self.analysis_engine.tres)
-        five_Safes_TES_message = analytics_tes.create_FiveSAFES_TES_message()
+        
+        self.tes_client.set_tes_messages(
+            query=user_query,
+            analysis_type=analysis_type,
+            task_name=task_name,
+            task_description=task_description,
+            output_format="json",
+        )
+        self.tes_client.set_tags(tres=self.analysis_engine.tres)
+        five_Safes_TES_message = self.tes_client.create_FiveSAFES_TES_message()
                 
 
         # Submit task and collect results (common workflow)
@@ -129,7 +137,7 @@ class AnalysisRunner:
                                f"Available analyses: {compatible_analyses}")
         return None
     
-    def get_compatible_analyses(self) -> List[str]:
+    def get_runnable_analysis_types(self) -> List[str]:
         """
         Get list of analyses that can be run on the currently stored data.
         
@@ -239,106 +247,7 @@ class AnalysisRunner:
         return self.statistical_analyzer.get_supported_analysis_types()
 
 
-# Example usage functions for common scenarios
-def run_mean_analysis_example(analysis_runner: AnalysisRunner, concept_id: int, tres: List[str] = None) -> Dict[str, Any]:
-    """
-    Example function showing how to run a mean analysis.
-    
-    Args:
-        analysis_runner (AnalysisRunner): AnalysisRunner instance
-        concept_id (int): Measurement concept ID
-        tres (List[str], optional): List of TREs
-        
-    Returns:
-        Dict[str, Any]: Analysis results
-    """
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
-    query_template = Template("""SELECT value_as_number FROM $schema.measurement 
-WHERE measurement_concept_id = $concept_id
-AND value_as_number IS NOT NULL""")
-    user_query = query_template.safe_substitute(schema=sql_schema, concept_id=concept_id)
-    return analysis_runner.run_analysis("mean", user_query=user_query, tres=tres)
 
-
-def run_variance_analysis_example(analysis_runner: AnalysisRunner, concept_id: int, tres: List[str] = None) -> Dict[str, Any]:
-    """
-    Example function showing how to run a variance analysis.
-    
-    Args:
-        analysis_runner (AnalysisRunner): AnalysisRunner instance
-        concept_id (int): Measurement concept ID
-        tres (List[str], optional): List of TREs
-        
-    Returns:
-        Dict[str, Any]: Analysis results
-    """
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
-    query_template = Template("""SELECT value_as_number FROM $schema.measurement 
-WHERE measurement_concept_id = $concept_id
-AND value_as_number IS NOT NULL""")
-    user_query = query_template.safe_substitute(schema=sql_schema, concept_id=concept_id)
-    return analysis_runner.run_analysis("variance", user_query=user_query, tres=tres)
-
-
-def run_pmcc_analysis_example(analysis_runner: AnalysisRunner, x_concept_id: int, y_concept_id: int, tres: List[str] = None) -> Dict[str, Any]:
-    """
-    Example function showing how to run a PMCC analysis.
-    
-    Args:
-        analysis_runner (AnalysisRunner): AnalysisRunner instance
-        x_concept_id (int): First measurement concept ID
-        y_concept_id (int): Second measurement concept ID
-        tres (List[str], optional): List of TREs
-        
-    Returns:
-        Dict[str, Any]: Analysis results
-    """
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
-    query_template = Template("""WITH x_values AS (
-  SELECT person_id, measurement_date, value_as_number AS x
-  FROM $schema.measurement
-  WHERE measurement_concept_id = $x_concept_id
-    AND value_as_number IS NOT NULL
-),
-y_values AS (
-  SELECT person_id, measurement_date, value_as_number AS y
-  FROM $schema.measurement
-  WHERE measurement_concept_id = $y_concept_id
-    AND value_as_number IS NOT NULL
-)
-SELECT
-  x.x,
-  y.y
-FROM x_values x
-INNER JOIN y_values y
-  ON x.person_id = y.person_id
-  AND x.measurement_date = y.measurement_date""")
-    user_query = query_template.safe_substitute(schema=sql_schema, x_concept_id=x_concept_id, y_concept_id=y_concept_id)
-    return analysis_runner.run_analysis("PMCC", user_query=user_query, tres=tres)
-
-
-def run_chi_squared_analysis_example(analysis_runner: AnalysisRunner, tres: List[str] = None) -> Dict[str, Any]:
-    """
-    Example function showing how to run a chi-squared analysis.
-    
-    Args:
-        analysis_runner (AnalysisRunner): AnalysisRunner instance
-        tres (List[str], optional): List of TREs
-        
-    Returns:
-        Dict[str, Any]: Analysis results
-    """
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
-    query_template = Template("""SELECT 
-  g.concept_name AS gender_name,
-  r.concept_name AS race_name
-FROM $schema.person p
-JOIN $schema.concept g ON p.gender_concept_id = g.concept_id
-JOIN $schema.concept r ON p.race_concept_id = r.concept_id
-WHERE p.race_concept_id IN (38003574, 38003584)""")
-    
-    user_query = query_template.safe_substitute(schema=sql_schema)
-    return analysis_runner.run_analysis("chi_squared_scipy", user_query=user_query, tres=tres)
 
 
 # Example usage

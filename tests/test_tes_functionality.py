@@ -17,7 +17,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from analytics_tes import AnalyticsTES
 from bunny_tes import BunnyTES
 from metadata_runner import MetadataRunner
-from analysis_engine import AnalysisEngine
 from tes_client import TESClient
 import tes
 
@@ -42,13 +41,12 @@ class TestAnalyticsTES:
     
     def test_set_inputs(self, analytics_tes):
         """Test that set_inputs returns None for analytics tasks."""
-        result = analytics_tes.set_inputs()
-        assert result is None
+        analytics_tes.set_inputs()
         assert analytics_tes.inputs is None
     
     def test_set_outputs(self, analytics_tes):
         """Test set_outputs creates correct output structure."""
-        outputs = analytics_tes.set_outputs(
+        analytics_tes.set_outputs(
             name="test_analysis",
             output_path="/outputs",
             output_type="DIRECTORY",
@@ -56,10 +54,10 @@ class TestAnalyticsTES:
             url=""
         )
         
-        assert isinstance(outputs, list)
-        assert len(outputs) == 1
+        assert isinstance(analytics_tes.outputs, list)
+        assert len(analytics_tes.outputs) == 1
         
-        output = outputs[0]
+        output = analytics_tes.outputs[0]
         assert isinstance(output, tes.Output)
         assert output.name == "test_analysis"
         assert output.path == "/outputs"
@@ -68,19 +66,19 @@ class TestAnalyticsTES:
     
     def test_set_env(self, analytics_tes):
         """Test set_env creates correct environment variables."""
-        env = analytics_tes.set_env()
+        analytics_tes.set_env()
         
-        assert isinstance(env, dict)
-        assert "DATASOURCE_DB_DATABASE" in env
-        assert "DATASOURCE_DB_HOST" in env
-        assert "DATASOURCE_DB_PASSWORD" in env
-        assert "DATASOURCE_DB_USERNAME" in env
+        assert isinstance(analytics_tes.env, dict)
+        assert "DATASOURCE_DB_DATABASE" in analytics_tes.env
+        assert "DATASOURCE_DB_HOST" in analytics_tes.env
+        assert "DATASOURCE_DB_PASSWORD" in analytics_tes.env
+        assert "DATASOURCE_DB_USERNAME" in analytics_tes.env
         
         # Verify values match the default_db_config
-        assert env["DATASOURCE_DB_DATABASE"] == analytics_tes.default_db_config['name']
-        assert env["DATASOURCE_DB_HOST"] == analytics_tes.default_db_config['host']
-        assert env["DATASOURCE_DB_PASSWORD"] == analytics_tes.default_db_config['password']
-        assert env["DATASOURCE_DB_USERNAME"] == analytics_tes.default_db_config['username']
+        assert analytics_tes.env["DATASOURCE_DB_DATABASE"] == analytics_tes.default_db_config['name']
+        assert analytics_tes.env["DATASOURCE_DB_HOST"] == analytics_tes.default_db_config['host']
+        assert analytics_tes.env["DATASOURCE_DB_PASSWORD"] == analytics_tes.default_db_config['password']
+        assert analytics_tes.env["DATASOURCE_DB_USERNAME"] == analytics_tes.default_db_config['username']
     
     def test_set_command(self, analytics_tes):
         """Test set_command creates correct command array."""
@@ -90,19 +88,19 @@ class TestAnalyticsTES:
         output_path = "/outputs"
         output_format = "json"
         
-        command = analytics_tes.set_command(query, analysis_type, output_path, output_format)
+        analytics_tes.set_command(query, analysis_type, output_path, output_format)
         
-        assert isinstance(command, list)
-        assert len(command) == 5
+        assert isinstance(analytics_tes.command, list)
+        assert len(analytics_tes.command) == 5
         
         # Check each command argument
-        assert f"--user-query={query}" in command
-        assert f"--analysis={analysis_type}" in command
-        assert f"--output-filename={output_path}/output" in command
-        assert f"--output-format={output_format}" in command
+        assert f"--user-query={query}" in analytics_tes.command
+        assert f"--analysis={analysis_type}" in analytics_tes.command
+        assert f"--output-filename={output_path}/output" in analytics_tes.command
+        assert f"--output-format={output_format}" in analytics_tes.command
         
         # Check db-connection string format by parsing the URL
-        db_conn_arg = [arg for arg in command if arg.startswith("--db-connection=")][0]
+        db_conn_arg = [arg for arg in analytics_tes.command if arg.startswith("--db-connection=")][0]
         conn_str = db_conn_arg.replace("--db-connection=", "")
         assert conn_str.startswith("postgresql://")
         parsed = urlparse(conn_str)
@@ -115,7 +113,7 @@ class TestAnalyticsTES:
         query = "SELECT * FROM measurement"
         analysis_type = "variance"
         
-        executors = analytics_tes.set_executors(
+        analytics_tes.set_executors(
             query=query,
             analysis_type=analysis_type,
             workdir="/app",
@@ -123,10 +121,10 @@ class TestAnalyticsTES:
             output_format="json"
         )
         
-        assert isinstance(executors, list)
-        assert len(executors) == 1
+        assert isinstance(analytics_tes.executors, list)
+        assert len(analytics_tes.executors) == 1
         
-        executor = executors[0]
+        executor = analytics_tes.executors[0]
         assert isinstance(executor, tes.Executor)
         assert executor.image == analytics_tes.default_image
         assert executor.workdir == "/app"
@@ -505,15 +503,14 @@ class TestBunnyTES:
         assert bunny_tes.task_api_password == 'api_pass'
     
     def test_set_inputs(self, bunny_tes):
-        """Test that set_inputs returns empty list for Bunny tasks."""
-        result = bunny_tes.set_inputs()
-        assert isinstance(result, list)
-        assert len(result) == 0
-        assert bunny_tes.inputs == []
+        """Test that set_inputs sets empty list for Bunny tasks."""
+        bunny_tes.set_inputs()
+        assert isinstance(bunny_tes.inputs, list)
+        assert len(bunny_tes.inputs) == 0
     
     def test_set_outputs(self, bunny_tes):
         """Test set_outputs creates correct output structure."""
-        outputs = bunny_tes.set_outputs(
+        bunny_tes.set_outputs(
             name="bunny_output",
             output_path="/outputs",
             output_type="DIRECTORY",
@@ -521,10 +518,10 @@ class TestBunnyTES:
             description="Bunny output"
         )
         
-        assert isinstance(outputs, list)
-        assert len(outputs) == 1
+        assert isinstance(bunny_tes.outputs, list)
+        assert len(bunny_tes.outputs) == 1
         
-        output = outputs[0]
+        output = bunny_tes.outputs[0]
         assert isinstance(output, tes.Output)
         assert output.name == "bunny_output"
         assert output.path == "/outputs"
@@ -533,64 +530,64 @@ class TestBunnyTES:
     
     def test_set_env(self, bunny_tes):
         """Test set_env creates correct environment variables including bunny-specific vars."""
-        env = bunny_tes.set_env()
+        bunny_tes._set_env()
         
-        assert isinstance(env, dict)
+        assert isinstance(bunny_tes.env, dict)
         
         # Standard database variables
-        assert "DATASOURCE_DB_DATABASE" in env
-        assert "DATASOURCE_DB_HOST" in env
-        assert "DATASOURCE_DB_PASSWORD" in env
-        assert "DATASOURCE_DB_USERNAME" in env
-        assert "DATASOURCE_DB_PORT" in env
-        assert "DATASOURCE_DB_SCHEMA" in env
+        assert "DATASOURCE_DB_DATABASE" in bunny_tes.env
+        assert "DATASOURCE_DB_HOST" in bunny_tes.env
+        assert "DATASOURCE_DB_PASSWORD" in bunny_tes.env
+        assert "DATASOURCE_DB_USERNAME" in bunny_tes.env
+        assert "DATASOURCE_DB_PORT" in bunny_tes.env
+        assert "DATASOURCE_DB_SCHEMA" in bunny_tes.env
         
         # Bunny-specific variables
-        assert "TASK_API_BASE_URL" in env
-        assert "TASK_API_USERNAME" in env
-        assert "TASK_API_PASSWORD" in env
-        assert "COLLECTION_ID" in env
-        assert "BUNNY_LOGGER_LEVEL" in env
+        assert "TASK_API_BASE_URL" in bunny_tes.env
+        assert "TASK_API_USERNAME" in bunny_tes.env
+        assert "TASK_API_PASSWORD" in bunny_tes.env
+        assert "COLLECTION_ID" in bunny_tes.env
+        assert "BUNNY_LOGGER_LEVEL" in bunny_tes.env
         
         # Verify values
-        assert env["DATASOURCE_DB_SCHEMA"] == 'public'
-        assert env["COLLECTION_ID"] == 'test-collection-123'
-        assert env["BUNNY_LOGGER_LEVEL"] == 'DEBUG'
-        assert env["TASK_API_BASE_URL"] == 'http://task-api.example.com'
+        assert bunny_tes.env["DATASOURCE_DB_SCHEMA"] == 'public'
+        assert bunny_tes.env["COLLECTION_ID"] == 'test-collection-123'
+        assert bunny_tes.env["BUNNY_LOGGER_LEVEL"] == 'DEBUG'
+        assert bunny_tes.env["TASK_API_BASE_URL"] == 'http://task-api.example.com'
     
     def test_set_command(self, bunny_tes):
         """Test set_command creates correct command array for Bunny."""
         output_path = "/outputs"
         code = "DEMOGRAPHICS"
         
-        command = bunny_tes.set_command(output_path, code)
+        bunny_tes._set_command(output_path, code)
         
-        assert isinstance(command, list)
-        assert "bunny" in command
-        assert "--body-json" in command
-        assert "--output" in command
+        assert isinstance(bunny_tes.command, list)
+        assert "bunny" in bunny_tes.command
+        assert "--body-json" in bunny_tes.command
+        assert "--output" in bunny_tes.command
         
         # Check output path in command
-        assert f"{output_path}/output.json" in command
+        assert f"{output_path}/output.json" in bunny_tes.command
         
         # Check that code is in the JSON body
-        json_arg = [arg for arg in command if "code" in arg][0]
+        json_arg = [arg for arg in bunny_tes.command if "code" in arg][0]
         assert code in json_arg
     
     def test_set_executors(self, bunny_tes):
         """Test set_executors creates correct executor structure for Bunny."""
         code = "DEMOGRAPHICS"
         
-        executors = bunny_tes.set_executors(
+        bunny_tes.set_executors(
             workdir="/app",
             output_path="/outputs",
-            code=code
+            analysis=code
         )
         
-        assert isinstance(executors, list)
-        assert len(executors) == 1
+        assert isinstance(bunny_tes.executors, list)
+        assert len(bunny_tes.executors) == 1
         
-        executor = executors[0]
+        executor = bunny_tes.executors[0]
         assert isinstance(executor, tes.Executor)
         assert executor.image == bunny_tes.default_image
         assert executor.workdir == "/app"
@@ -609,7 +606,7 @@ class TestBunnyTES:
         name = "test_bunny_task"
         code = "DEMOGRAPHICS"
         
-        bunny_tes.set_tes_messages(name=name, code=code)
+        bunny_tes.set_tes_messages(name=name, analysis=code)
         
         # Verify task was created
         assert bunny_tes.task is not None
@@ -628,7 +625,7 @@ class TestBunnyTES:
     
     def test_bunny_message_structure(self, bunny_tes):
         """Test that Bunny TES message has correct structure for metadata."""
-        bunny_tes.set_tes_messages(name="metadata_test", code="DEMOGRAPHICS")
+        bunny_tes.set_tes_messages(name="metadata_test", analysis="DEMOGRAPHICS")
         
         task = bunny_tes.task
         
@@ -656,22 +653,21 @@ class TestMetadataRunner:
     """Test cases for MetadataRunner class."""
     
     @pytest.fixture
-    def mock_engine(self):
-        """Set up mock AnalysisEngine."""
-        engine = Mock(spec=AnalysisEngine)
-        engine.tes_client = Mock(spec=BunnyTES)
-        engine.tes_client.task = Mock()
-        engine.tres = ['TRE1', 'TRE2']
-        return engine
+    def mock_tes_client(self):
+        """Set up mock TES client for MetadataRunner (runner expects tes_client, token, project)."""
+        client = Mock(spec=BunnyTES)
+        client.task = Mock()
+        return client
     
     @pytest.fixture
-    def metadata_runner(self, mock_engine):
-        """Set up MetadataRunner instance with mock engine."""
-        return MetadataRunner(mock_engine)
+    def metadata_runner(self, mock_tes_client):
+        """Set up MetadataRunner instance with mock TES client."""
+        return MetadataRunner(tes_client=mock_tes_client, token="test_token", project="test_project")
     
-    def test_metadata_initialization(self, metadata_runner, mock_engine):
+    def test_metadata_initialization(self, metadata_runner, mock_tes_client):
         """Test that MetadataRunner initializes correctly."""
-        assert metadata_runner.analysis_engine == mock_engine
+        assert metadata_runner.tes_client == mock_tes_client
+        assert metadata_runner.analysis_engine is not None
         assert metadata_runner.data_processor is not None
         assert isinstance(metadata_runner.aggregated_data, dict)
     
@@ -788,7 +784,7 @@ class TestMetadataRunnerTESIntegration:
         code = "DEMOGRAPHICS"
         
         # Create complete TES message
-        bunny_tes.set_tes_messages(name="integration_test_metadata", code=code)
+        bunny_tes.set_tes_messages(name="integration_test_metadata", analysis=code)
         
         task = bunny_tes.task
         
@@ -820,7 +816,7 @@ class TestMetadataRunnerTESIntegration:
     
     def test_metadata_command_structure(self, bunny_tes):
         """Test that metadata command has correct structure."""
-        bunny_tes.set_tes_messages(name="command_test", code="PROCEDURES")
+        bunny_tes.set_tes_messages(name="command_test", analysis="PROCEDURES")
         
         executor = bunny_tes.task.executors[0]
         command = executor.command
