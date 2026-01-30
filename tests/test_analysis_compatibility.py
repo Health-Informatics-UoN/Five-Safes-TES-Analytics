@@ -5,20 +5,24 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import pytest
 import numpy as np
 from unittest.mock import Mock, patch
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
+from analysis_runner import AnalysisRunner
+from analytics_tes import AnalyticsTES
 
 
 class TestAnalysisCompatibility:
     """Test cases for analysis compatibility scenarios."""
     
     @pytest.fixture
-    def engine(self):
+    def runner(self):
         """Set up test fixtures."""
-        return AnalysisEngine("test_token", "test_project")
+        tes_client = AnalyticsTES()
+        analysis_runner = AnalysisRunner(tes_client, "test_token", "test_project")
+        return analysis_runner
     
-    @patch('analysis_engine.TESClient')
-    @patch('analysis_engine.MinIOClient')
-    def test_incompatible_analysis_on_same_data(self, mock_minio, mock_tes, engine):
+    @patch('analytics_tes.AnalyticsTES')
+    @patch('analysis_orchestrator.MinIOClient')
+    def test_incompatible_analysis_on_same_data(self, mock_minio, mock_tes_class, runner):
         """Test what happens when running incompatible analyses on the same data."""
         # Mock TES client
         mock_tes_instance = Mock()
@@ -26,49 +30,58 @@ class TestAnalysisCompatibility:
         mock_tes_instance.submit_task.return_value = {"id": "123"}
         # Mock get_task_status to return a proper dictionary with status
         mock_tes_instance.get_task_status.return_value = {"status": 11, "description": "Completed"}
-        mock_tes.return_value = mock_tes_instance
+        mock_tes_instance.set_tes_messages.return_value = None
+        mock_tes_instance.set_tags.return_value = None
+        mock_tes_instance.create_FiveSAFES_TES_message.return_value = Mock()
+        mock_tes_instance.task = Mock()
+        mock_tes_class.return_value = mock_tes_instance
         
 
         # Mock MinIO client
         mock_minio_instance = Mock()
         mock_minio_instance.get_object.return_value = "n,total\n10,100\n"
+        mock_minio_instance.get_object_smart.return_value = "n,total\n10,100\n"
         mock_minio.return_value = mock_minio_instance
         
-        # Create engine after setting up mocks
-        engine = AnalysisEngine("test_token", "test_project")
-        
+        # Create analysis_runner after setting up mocks
+        tes_client = mock_tes_instance  # Use the mocked instance
+        analysis_runner = AnalysisRunner(tes_client, "test_token", "test_project")
+        # Avoid real HTTP/polling: mock _submit_and_collect_results to return task_id and data
+        raw_data = ["n,total\n10,100\n", "n,total\n15,150\n"]
+        analysis_runner.analysis_orchestrator._submit_and_collect_results = Mock(
+            return_value=("123", raw_data)
+        )
         
         # Mock data processor to return raw data that will be processed by analysis class
-        raw_data = ["n,total\n10,100\n", "n,total\n15,150\n"]
-        engine.data_processor.aggregate_data = Mock(return_value=raw_data)
+        analysis_runner.data_processor.aggregate_data = Mock(return_value=raw_data)
         
         # Mock the statistical analyzer to simulate the analysis class storing data
         def mock_analyze_data(input_data, analysis_type):
             # Simulate what the MeanAnalysis class would do
             if analysis_type == "mean":
                 # Simulate the analysis class storing aggregated data
-                engine.statistical_analyzer.analysis_classes["mean"].aggregated_data = {"n": 25, "total": 250}
+                analysis_runner.statistical_analyzer.analysis_classes["mean"].aggregated_data = {"n": 25, "total": 250}
                 return 10.0  # mean result
             else:
                 raise Exception("Incompatible analysis")
         
-        engine.statistical_analyzer.analyze_data = Mock(side_effect=mock_analyze_data)
+        analysis_runner.statistical_analyzer.analyze_data = Mock(side_effect=mock_analyze_data)
         
-        # Run mean analysis first
+        # Run mean analysis first (use analysis_runner with mocks, not fixture runner)
         user_query = "SELECT value_as_number FROM measurement WHERE concept_id = 123"
-        result1 = engine.run_analysis(
+        result1 = analysis_runner.run_analysis(
             "mean",
             user_query,
             ["TRE1", "TRE2"]
         )
         
         # Check that aggregated_data is stored as a dict with expected keys
-        assert engine.aggregated_data is not None
-        assert isinstance(engine.aggregated_data, dict)
-        assert "n" in engine.aggregated_data
-        assert "total" in engine.aggregated_data
-        assert engine.aggregated_data["n"] == 25
-        assert engine.aggregated_data["total"] == 250
+        assert analysis_runner.aggregated_data is not None
+        assert isinstance(analysis_runner.aggregated_data, dict)
+        assert "n" in analysis_runner.aggregated_data
+        assert "total" in analysis_runner.aggregated_data
+        assert analysis_runner.aggregated_data["n"] == 25
+        assert analysis_runner.aggregated_data["total"] == 250
         
         # Now try to run variance analysis on the same data
         # This should fail because the data format is incompatible
@@ -76,36 +89,36 @@ class TestAnalysisCompatibility:
             # Un-mock analyze_data to use the real implementation for this check
             from statistical_analyzer import StatisticalAnalyzer
             real_analyzer = StatisticalAnalyzer()
-            real_analyzer.analyze_data(engine.aggregated_data, "variance")
+            real_analyzer.analyze_data(analysis_runner.aggregated_data, "variance")
     
-    @patch('analysis_engine.TESClient')
-    @patch('analysis_engine.MinIOClient')
-    def test_compatible_analysis_on_same_data(self, mock_minio, mock_tes, engine):
+    @patch('analytics_tes.AnalyticsTES')
+    @patch('analysis_orchestrator.MinIOClient')
+    def test_compatible_analysis_on_same_data(self, mock_minio, mock_tes_class, runner):
         """Test running compatible analyses on the same data (e.g., variance and mean)."""
         # Mock TES client
         mock_tes_instance = Mock()
         mock_tes_instance.generate_submission_template.return_value = ({"task": "data"}, 2)
         mock_tes_instance.submit_task.return_value = {"id": "123"}
-        # Mock get_task_status to return a proper dictionary with status
         mock_tes_instance.get_task_status.return_value = {"status": 11, "description": "Completed"}
-        mock_tes.return_value = mock_tes_instance
+        mock_tes_instance.set_tes_messages.return_value = None
+        mock_tes_instance.set_tags.return_value = None
+        mock_tes_instance.create_FiveSAFES_TES_message.return_value = Mock()
+        mock_tes_instance.task = Mock()
+        mock_tes_class.return_value = mock_tes_instance
         
-        # Mock MinIO client to return variance analysis results
-        mock_minio_instance = Mock()
-        # Mock variance results from Docker containers
-        variance_results = [
+        mock_minio.return_value = Mock()
+        
+        # Create analysis_runner with mocked tes_client (AnalysisRunner expects tes_client, token, project)
+        analysis_runner = AnalysisRunner(mock_tes_instance, "test_token", "test_project")
+        # Avoid real HTTP/polling
+        variance_raw = [
             '{"n": 100, "sum_x2": 8500.25, "total": 500.5}',
             '{"n": 75, "sum_x2": 4000.50, "total": 250.0}',
             '{"n": 125, "sum_x2": 9500.00, "total": 600.0}'
         ]
-        # Use side_effect to return different results for each call
-        # This simulates the polling system calling get_object_smart multiple times
-        # to collect results from different TREs sequentially
-        mock_minio_instance.get_object_smart.side_effect = lambda bucket, path: variance_results.pop(0) if variance_results else None
-        mock_minio.return_value = mock_minio_instance
-        
-        # Create engine after setting up mocks
-        engine = AnalysisEngine("test_token", "test_project")
+        analysis_runner.analysis_orchestrator._submit_and_collect_results = Mock(
+            return_value=("123", variance_raw)
+        )
         
         # Mock data processor to return aggregated variance data
         aggregated_variance_data = {
@@ -113,50 +126,48 @@ class TestAnalysisCompatibility:
             "sum_x2": [8500.25, 4000.50, 9500.00],
             "total": [500.5, 250.0, 600.0]
         }
-        engine.data_processor.aggregate_data = Mock(return_value=aggregated_variance_data)
+        analysis_runner.data_processor.aggregate_data = Mock(return_value=aggregated_variance_data)
         
         # Mock the statistical analyzer to simulate variance analysis
         def mock_analyze_data(input_data, analysis_type):
             if analysis_type == "variance":
-                # Simulate variance analysis storing aggregated data
-                engine.statistical_analyzer.analysis_classes["variance"].aggregated_data = {
-                    "n": 300,  # 100 + 75 + 125
-                    "sum_x2": 22000.75,  # 8500.25 + 4000.50 + 9500.00
-                    "total": 1350.5  # 500.5 + 250.0 + 600.0
+                analysis_runner.statistical_analyzer.analysis_classes["variance"].aggregated_data = {
+                    "n": 300,
+                    "sum_x2": 22000.75,
+                    "total": 1350.5
                 }
-                return 15.25  # variance result
+                return 15.25
             else:
                 raise Exception("Incompatible analysis")
         
-        engine.statistical_analyzer.analyze_data = Mock(side_effect=mock_analyze_data)
+        analysis_runner.statistical_analyzer.analyze_data = Mock(side_effect=mock_analyze_data)
         
         # Run variance analysis first
         user_query = "SELECT value_as_number FROM public.measurement WHERE measurement_concept_id = 21490742"
-        result1 = engine.run_analysis(
+        result1 = analysis_runner.run_analysis(
             "variance",
             user_query,
             ["TRE1", "TRE2", "TRE3"]
         )
         
         # Check that aggregated_data is stored with variance results
-        assert engine.aggregated_data is not None
-        assert isinstance(engine.aggregated_data, dict)
-        assert "n" in engine.aggregated_data
-        assert "sum_x2" in engine.aggregated_data
-        assert "total" in engine.aggregated_data
+        assert analysis_runner.aggregated_data is not None
+        assert isinstance(analysis_runner.aggregated_data, dict)
+        assert "n" in analysis_runner.aggregated_data
+        assert "sum_x2" in analysis_runner.aggregated_data
+        assert "total" in analysis_runner.aggregated_data
         
         # Now run mean analysis on the same data (compatible analysis)
         from statistical_analyzer import StatisticalAnalyzer
         real_analyzer = StatisticalAnalyzer()
-        # The mean analysis can use the same aggregated data since it has 'n' and 'total'
-        result2 = real_analyzer.analyze_data(engine.aggregated_data, "mean")
+        result2 = real_analyzer.analyze_data(analysis_runner.aggregated_data, "mean")
         
         # Verify the mean calculation
         expected_mean = 1350.5 / 300  # total / n
         assert result2 == expected_mean
         
         
-    def test_data_format_validation(self, engine):
+    def test_data_format_validation(self, runner):
         """Test that data format validation works correctly."""
         # Test mean data format
         mean_data = np.array([[10, 100]])  # n, total format
@@ -177,7 +188,7 @@ class TestAnalysisCompatibility:
 
 
 
-    def test_dictionary_based_analysis(self, engine):
+    def test_dictionary_based_analysis(self, runner):
         """
         Test the centralized dictionary-based data storage system.
         
@@ -191,15 +202,29 @@ class TestAnalysisCompatibility:
         {"n": count, "sum_x2": sum of squares, "total": sum of values}
         Then runs a compatible mean analysis on the same stored data.
         """
-        from analysis_engine import AnalysisEngine
+        from analysis_orchestrator import AnalysisOrchestrator
+        from analysis_runner import AnalysisRunner
+        from unittest.mock import Mock
         
-        # Create engine and mock the components
-        engine = AnalysisEngine("test_token", "test_project")
+        # Create mocked TES client to avoid real HTTP requests
+        mock_tes_client = Mock()
+        mock_tes_client.submit_task.return_value = {"id": "123"}
+        mock_tes_client.get_task_status.return_value = {"status": 11, "description": "Completed"}
+        mock_tes_client.set_tes_messages.return_value = None
+        mock_tes_client.set_tags.return_value = None
+        mock_tes_client.create_FiveSAFES_TES_message.return_value = Mock()
+        mock_tes_client.task = Mock()
+        
+        # Create analysis_runner with mocked tes_client (AnalysisRunner expects tes_client, token, project)
+        runner = AnalysisRunner(mock_tes_client, "test_token", "test_project")
+        runner.analysis_orchestrator._submit_and_collect_results = Mock(
+            return_value=("123", ["n,sum_x2,total\n10,1000,100\n"])
+        )
         
         # Mock data processor to return raw data that will be processed by analysis class
         # This simulates the aggregated data from multiple TREs in CSV format
         raw_data = ["n,sum_x2,total\n10,1000,100\n"]
-        engine.data_processor.aggregate_data = Mock(return_value=raw_data)
+        runner.data_processor.aggregate_data = Mock(return_value=raw_data)
         
         # Mock the statistical analyzer to simulate the analysis class storing data
         # This simulates what happens when an analysis class processes the raw data
@@ -208,25 +233,25 @@ class TestAnalysisCompatibility:
             if analysis_type == "variance":
                 # Simulate the analysis class storing aggregated data in centralized dict
                 # This is the key feature being tested - storing data for reuse
-                engine.statistical_analyzer.analysis_classes["variance"].aggregated_data = {"n": 10, "sum_x2": 1000, "total": 100}
+                runner.statistical_analyzer.analysis_classes["variance"].aggregated_data = {"n": 10, "sum_x2": 1000, "total": 100}
                 return 5.0  # variance result
             else:
                 raise Exception("Incompatible analysis")
         
-        engine.statistical_analyzer.analyze_data = Mock(side_effect=mock_analyze_data)
+        runner.statistical_analyzer.analyze_data = Mock(side_effect=mock_analyze_data)
         
         # Mock TES and MinIO clients to avoid actual API calls
         # These mocks simulate the task submission and result retrieval process
-        engine.tes_client.generate_submission_template = Mock(return_value=({"task": "data"}, 1))
-        engine.tes_client.submit_task = Mock(return_value={"id": "123"})
+        runner.analysis_orchestrator.tes_client.generate_submission_template = Mock(return_value=({"task": "data"}, 1))
+        runner.analysis_orchestrator.tes_client.submit_task = Mock(return_value={"id": "123"})
         # Mock get_task_status to return completed status
-        engine.tes_client.get_task_status = Mock(return_value={"status": 11, "description": "Completed"})
-        engine.minio_client.get_object = Mock(return_value="n,sum_x2,total\n10,1000,100")
+        runner.analysis_orchestrator.tes_client.get_task_status = Mock(return_value={"status": 11, "description": "Completed"})
+        runner.analysis_orchestrator.minio_client.get_object = Mock(return_value="n,sum_x2,total\n10,1000,100")
         
         # Run variance analysis (this will store data in the centralized dict)
         # This triggers the full pipeline: task submission, polling, data processing, analysis
         user_query = "SELECT value_as_number FROM measurement WHERE concept_id = 123"
-        result = engine.run_analysis(
+        result = runner.run_analysis(
             "variance",
             user_query,
             ["TRE1"]
@@ -234,17 +259,17 @@ class TestAnalysisCompatibility:
         
         # Verify that aggregated data is stored in the centralized dictionary
         # This is the core feature being tested - data persistence for reuse
-        assert isinstance(engine.aggregated_data, dict)
-        assert "n" in engine.aggregated_data
-        assert "sum_x2" in engine.aggregated_data
-        assert "total" in engine.aggregated_data
-        assert engine.aggregated_data["n"] == 10
-        assert engine.aggregated_data["total"] == 100
-        assert engine.aggregated_data["sum_x2"] == 1000
+        assert isinstance(runner.aggregated_data, dict)
+        assert "n" in runner.aggregated_data
+        assert "sum_x2" in runner.aggregated_data
+        assert "total" in runner.aggregated_data
+        assert runner.aggregated_data["n"] == 10
+        assert runner.aggregated_data["total"] == 100
+        assert runner.aggregated_data["sum_x2"] == 1000
         
         # Test the compatibility system - check which analyses can run on stored data
         # This verifies the system can identify compatible analyses without re-running the pipeline
-        compatible = engine.get_compatible_analyses()
+        compatible = runner.get_runnable_analysis_types()
         assert "mean" in compatible  # Mean can use n and total from variance data
         assert "variance" in compatible  # Variance can reuse its own data
         
@@ -253,10 +278,10 @@ class TestAnalysisCompatibility:
         # Un-mock the analyzer to use the real implementation for this test
         from statistical_analyzer import StatisticalAnalyzer
         real_analyzer = StatisticalAnalyzer()
-        engine.statistical_analyzer = real_analyzer
+        runner.statistical_analyzer = real_analyzer
         
         # Run mean analysis using the stored variance data (n=10, total=100)
         # Mean = total/n = 100/10 = 10.0
-        mean_result = engine.run_additional_analysis("mean")
+        mean_result = runner.run_additional_analysis("mean")
         assert isinstance(mean_result, float)
         assert mean_result == 10.0  # 100/10 = 10 

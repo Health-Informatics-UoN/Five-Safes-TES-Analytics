@@ -3,13 +3,13 @@
 ## Quick Start
 
 ```python
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 
 # Initialize
-engine = AnalysisEngine(token="your_token", project="YourProject")
+orchestrator = AnalysisOrchestrator(token="your_token", project="YourProject")
 
 # Run analysis
-result = engine.run_mean_analysis(concept_id=21490742, tres=["Nottingham"])
+result = orchestrator.run_mean_analysis(concept_id=21490742, tres=["Nottingham"])
 print(f"Result: {result['result']}")
 ```
 
@@ -37,13 +37,13 @@ MINIO_ENDPOINT=your-minio-endpoint:9000
 MINIO_OUTPUT_BUCKET=your-output-bucket-name
 ```
 
-## AnalysisEngine
+## AnalysisOrchestrator
 
 Main orchestrator class for federated analysis workflow.
 
 ### Constructor
 ```python
-AnalysisEngine(token: str, project: str = None)
+AnalysisOrchestrator(token: str, project: str = None)
 ```
 
 **Parameters:**
@@ -208,23 +208,23 @@ Force refresh of credentials.
 
 ### Basic Mean Analysis
 ```python
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 
-engine = AnalysisEngine("your_token")
-result = engine.run_mean_analysis(21490742, ["Nottingham"])
+orchestrator = AnalysisOrchestrator("your_token")
+result = orchestrator.run_mean_analysis(21490742, ["Nottingham"])
 print(f"Mean: {result['result']}")
 ```
 
 ### Custom Query Analysis
 ```python
 from query_builder import QueryBuilder
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 
 qb = QueryBuilder()
 custom_query = qb.build_summary_stats_query(concept_id=21490742)
 
-engine = AnalysisEngine("your_token")
-result = engine.run_analysis(
+orchestrator = AnalysisOrchestrator("your_token")
+result = orchestrator.run_analysis(
     analysis_type="mean",
     query=custom_query,
     tres=["Nottingham"],
