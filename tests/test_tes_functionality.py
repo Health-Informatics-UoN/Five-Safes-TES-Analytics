@@ -667,7 +667,7 @@ class TestMetadataRunner:
     def test_metadata_initialization(self, metadata_runner, mock_tes_client):
         """Test that MetadataRunner initializes correctly."""
         assert metadata_runner.tes_client == mock_tes_client
-        assert metadata_runner.analysis_engine is not None
+        assert metadata_runner.analysis_orchestrator is not None
         assert metadata_runner.data_processor is not None
         assert isinstance(metadata_runner.aggregated_data, dict)
     
@@ -690,9 +690,9 @@ class TestMetadataRunner:
     def test_get_metadata(self, metadata_runner):
         """Test get_metadata workflow with placeholder aggregation."""
         # Configure mock engine methods
-        metadata_runner.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
+        metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
         test_data = [{"metadata": "test_data"}]
-        metadata_runner.analysis_engine._submit_and_collect_results.return_value = ("task-123", test_data)
+        metadata_runner.analysis_orchestrator._submit_and_collect_results.return_value = ("task-123", test_data)
         
         # Call get_metadata
         result = metadata_runner.get_metadata(
@@ -713,27 +713,27 @@ class TestMetadataRunner:
     
     def test_get_metadata_calls_tes_methods(self, metadata_runner):
         """Test that get_metadata calls the correct TES methods."""
-        metadata_runner.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
-        metadata_runner.analysis_engine._submit_and_collect_results.return_value = ("task-456", [{"data": "test"}])
+        metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
+        metadata_runner.analysis_orchestrator._submit_and_collect_results.return_value = ("task-456", [{"data": "test"}])
         
         # Call get_metadata
         metadata_runner.get_metadata(tres=['TRE1'])
         
         # Verify TES client methods were called
-        metadata_runner.analysis_engine.tes_client.set_tes_messages.assert_called_once()
-        metadata_runner.analysis_engine.tes_client.set_tags.assert_called_once()
-        metadata_runner.analysis_engine.tes_client.create_FiveSAFES_TES_message.assert_called_once()
+        metadata_runner.analysis_orchestrator.tes_client.set_tes_messages.assert_called_once()
+        metadata_runner.analysis_orchestrator.tes_client.set_tags.assert_called_once()
+        metadata_runner.analysis_orchestrator.tes_client.create_FiveSAFES_TES_message.assert_called_once()
     
     def test_get_metadata_stores_raw_data(self, metadata_runner):
         """Test that get_metadata stores raw data (placeholder - no aggregation yet)."""
-        metadata_runner.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
+        metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
         
         # Mock data from two TREs
         mock_data = [
             {"count": 100, "mean": 25.5},
             {"count": 150, "mean": 30.2}
         ]
-        metadata_runner.analysis_engine._submit_and_collect_results.return_value = ("task-789", mock_data)
+        metadata_runner.analysis_orchestrator._submit_and_collect_results.return_value = ("task-789", mock_data)
         
         result = metadata_runner.get_metadata(tres=['TRE1', 'TRE2'])
         
@@ -747,8 +747,8 @@ class TestMetadataRunner:
     
     def test_get_metadata_error_handling(self, metadata_runner):
         """Test that get_metadata handles errors properly."""
-        metadata_runner.analysis_engine.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
-        metadata_runner.analysis_engine._submit_and_collect_results.side_effect = Exception("TES submission failed")
+        metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
+        metadata_runner.analysis_orchestrator._submit_and_collect_results.side_effect = Exception("TES submission failed")
         
         # Should raise the exception
         with pytest.raises(Exception, match="TES submission failed"):

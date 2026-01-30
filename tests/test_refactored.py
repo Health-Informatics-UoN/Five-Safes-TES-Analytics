@@ -173,14 +173,14 @@ class TestAnalysisRunner:
         mock_tes_client.get_task_status.return_value = {"status": 11, "description": "Completed"}
         return AnalysisRunner(tes_client=mock_tes_client, token="test_token", project="test_project")
     
-    @patch('analysis_engine.MinIOClient')
+    @patch('analysis_orchestrator.MinIOClient')
     def test_run_analysis(self, mock_minio, runner):
         """Test running a complete analysis workflow."""
         mock_minio_instance = Mock()
         mock_minio_instance.get_object.return_value = "n,total\n10,100\n"
         mock_minio.return_value = mock_minio_instance
         
-        runner.analysis_engine._submit_and_collect_results = Mock(
+        runner.analysis_orchestrator._submit_and_collect_results = Mock(
             return_value=("123", ["n,total\n10,100\n", "n,total\n15,150\n"])
         )
         DataProcessor.aggregate_data = Mock(return_value=np.array([[10, 100]]))

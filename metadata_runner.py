@@ -1,4 +1,4 @@
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 from typing import List, Dict, Any
 from bunny_tes import BunnyTES
 from tes_client import TESClient
@@ -10,8 +10,8 @@ class MetadataRunner:
                     tes_client: TESClient = BunnyTES(), 
                     token: str = None, 
                     project: str = None):
-        self.analysis_engine = AnalysisEngine(tes_client=tes_client, token=token, project=project)
-        self.tes_client = self.analysis_engine.tes_client
+        self.analysis_orchestrator = AnalysisOrchestrator(tes_client=tes_client, token=token, project=project)
+        self.tes_client = self.analysis_orchestrator.tes_client
         ## don't know whether to use the same processor, or create a new one.
         self.data_processor = DataProcessor()
         
@@ -29,20 +29,20 @@ class MetadataRunner:
 
         analysis_type = "metadata"
 
-        task_name, task_description, bucket, tres = self.analysis_engine.setup_analysis(analysis_type, task_name, task_description, bucket, tres)
+        task_name, task_description, bucket, tres = self.analysis_orchestrator.setup_analysis(analysis_type, task_name, task_description, bucket, tres)
 
         ### create the TES message for the metadata
-        metadata_tes = self.analysis_engine.tes_client
+        metadata_tes = self.analysis_orchestrator.tes_client
         metadata_tes.set_tes_messages(task_name=task_name, task_description=task_description)
-        metadata_tes.set_tags(tres=self.analysis_engine.tres)
+        metadata_tes.set_tags(tres=self.analysis_orchestrator.tres)
         metadata_tes.create_FiveSAFES_TES_message()
 
         try:
-            task_id, data = self.analysis_engine._submit_and_collect_results(
+            task_id, data = self.analysis_orchestrator._submit_and_collect_results(
                 metadata_tes.task,
                 bucket,
                 output_format="json",
-                submit_message=f"Submitting {analysis_type} analysis to {len(self.analysis_engine.tres)} TREs..."
+                submit_message=f"Submitting {analysis_type} analysis to {len(self.analysis_orchestrator.tres)} TREs..."
             )
 
             # Process and analyze data
@@ -97,7 +97,7 @@ class MetadataRunner:
 
 if __name__ == "__main__":
 
-    #engine = AnalysisEngine(tes_client=BunnyTES())
+    #orchestrator = AnalysisOrchestrator(tes_client=BunnyTES())
     #metadata_runner = MetadataRunner(engine)
     metadata_runner = MetadataRunner()
     sql_schema = os.getenv("SQL_SCHEMA", "public")

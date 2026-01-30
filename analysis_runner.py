@@ -1,4 +1,4 @@
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 from typing import List, Dict, Any, Optional, Union
 from analytics_tes import AnalyticsTES
 from tes_client import TESClient
@@ -14,8 +14,8 @@ class AnalysisRunner:
                     tes_client: TESClient = AnalyticsTES(), 
                     token: str = None, 
                     project: str = None):
-        self.analysis_engine = AnalysisEngine(tes_client=tes_client, token=token, project=project)
-        self.tes_client = self.analysis_engine.tes_client
+        self.analysis_orchestrator = AnalysisOrchestrator(tes_client=tes_client, token=token, project=project)
+        self.tes_client = self.analysis_orchestrator.tes_client
         # Own instances for aggregation and analysis
         self.data_processor = DataProcessor()
         self.statistical_analyzer = StatisticalAnalyzer()
@@ -44,7 +44,7 @@ class AnalysisRunner:
             Dict[str, Any]: Analysis results
         """
 
-        task_name, task_description, bucket, tres = self.analysis_engine.setup_analysis(analysis_type, task_name, task_description, bucket, tres)
+        task_name, task_description, bucket, tres = self.analysis_orchestrator.setup_analysis(analysis_type, task_name, task_description, bucket, tres)
         
         # Check if we should run on existing data (returns early if so)
         existing_data_result = self.check_analysis_on_existing_data(analysis_type, user_query, tres)
@@ -60,17 +60,17 @@ class AnalysisRunner:
             task_description=task_description,
             output_format="json",
         )
-        self.tes_client.set_tags(tres=self.analysis_engine.tres)
+        self.tes_client.set_tags(tres=self.analysis_orchestrator.tres)
         five_Safes_TES_message = self.tes_client.create_FiveSAFES_TES_message()
                 
 
         # Submit task and collect results (common workflow)
         try:
-            task_id, data = self.analysis_engine._submit_and_collect_results(
+            task_id, data = self.analysis_orchestrator._submit_and_collect_results(
                 five_Safes_TES_message,
                 bucket,
                 output_format="json",
-                submit_message=f"Submitting {analysis_type} analysis to {len(self.analysis_engine.tres)} TREs..."
+                submit_message=f"Submitting {analysis_type} analysis to {len(self.analysis_orchestrator.tres)} TREs..."
             )
 
             # Process and analyze data (aggregation moved to this class)
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     
     # Will use 5STES_PROJECT from environment and 5STES_TOKEN from environment
     #analytics_tes = AnalyticsTES()
-    #engine = AnalysisEngine(tes_client=analytics_tes) 
+    #orchestrator = AnalysisOrchestrator(tes_client=analytics_tes) 
     #analysis_runner = AnalysisRunner(engine)
     analysis_runner = AnalysisRunner()
 

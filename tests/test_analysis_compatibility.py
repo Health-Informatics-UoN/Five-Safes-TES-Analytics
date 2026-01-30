@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import pytest
 import numpy as np
 from unittest.mock import Mock, patch
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 from analysis_runner import AnalysisRunner
 from analytics_tes import AnalyticsTES
 
@@ -21,7 +21,7 @@ class TestAnalysisCompatibility:
         return analysis_runner
     
     @patch('analytics_tes.AnalyticsTES')
-    @patch('analysis_engine.MinIOClient')
+    @patch('analysis_orchestrator.MinIOClient')
     def test_incompatible_analysis_on_same_data(self, mock_minio, mock_tes_class, runner):
         """Test what happens when running incompatible analyses on the same data."""
         # Mock TES client
@@ -48,7 +48,7 @@ class TestAnalysisCompatibility:
         analysis_runner = AnalysisRunner(tes_client, "test_token", "test_project")
         # Avoid real HTTP/polling: mock _submit_and_collect_results to return task_id and data
         raw_data = ["n,total\n10,100\n", "n,total\n15,150\n"]
-        analysis_runner.analysis_engine._submit_and_collect_results = Mock(
+        analysis_runner.analysis_orchestrator._submit_and_collect_results = Mock(
             return_value=("123", raw_data)
         )
         
@@ -92,7 +92,7 @@ class TestAnalysisCompatibility:
             real_analyzer.analyze_data(analysis_runner.aggregated_data, "variance")
     
     @patch('analytics_tes.AnalyticsTES')
-    @patch('analysis_engine.MinIOClient')
+    @patch('analysis_orchestrator.MinIOClient')
     def test_compatible_analysis_on_same_data(self, mock_minio, mock_tes_class, runner):
         """Test running compatible analyses on the same data (e.g., variance and mean)."""
         # Mock TES client
@@ -116,7 +116,7 @@ class TestAnalysisCompatibility:
             '{"n": 75, "sum_x2": 4000.50, "total": 250.0}',
             '{"n": 125, "sum_x2": 9500.00, "total": 600.0}'
         ]
-        analysis_runner.analysis_engine._submit_and_collect_results = Mock(
+        analysis_runner.analysis_orchestrator._submit_and_collect_results = Mock(
             return_value=("123", variance_raw)
         )
         
@@ -202,7 +202,7 @@ class TestAnalysisCompatibility:
         {"n": count, "sum_x2": sum of squares, "total": sum of values}
         Then runs a compatible mean analysis on the same stored data.
         """
-        from analysis_engine import AnalysisEngine
+        from analysis_orchestrator import AnalysisOrchestrator
         from analysis_runner import AnalysisRunner
         from unittest.mock import Mock
         
@@ -217,7 +217,7 @@ class TestAnalysisCompatibility:
         
         # Create analysis_runner with mocked tes_client (AnalysisRunner expects tes_client, token, project)
         runner = AnalysisRunner(mock_tes_client, "test_token", "test_project")
-        runner.analysis_engine._submit_and_collect_results = Mock(
+        runner.analysis_orchestrator._submit_and_collect_results = Mock(
             return_value=("123", ["n,sum_x2,total\n10,1000,100\n"])
         )
         
@@ -242,11 +242,11 @@ class TestAnalysisCompatibility:
         
         # Mock TES and MinIO clients to avoid actual API calls
         # These mocks simulate the task submission and result retrieval process
-        runner.analysis_engine.tes_client.generate_submission_template = Mock(return_value=({"task": "data"}, 1))
-        runner.analysis_engine.tes_client.submit_task = Mock(return_value={"id": "123"})
+        runner.analysis_orchestrator.tes_client.generate_submission_template = Mock(return_value=({"task": "data"}, 1))
+        runner.analysis_orchestrator.tes_client.submit_task = Mock(return_value={"id": "123"})
         # Mock get_task_status to return completed status
-        runner.analysis_engine.tes_client.get_task_status = Mock(return_value={"status": 11, "description": "Completed"})
-        runner.analysis_engine.minio_client.get_object = Mock(return_value="n,sum_x2,total\n10,1000,100")
+        runner.analysis_orchestrator.tes_client.get_task_status = Mock(return_value={"status": 11, "description": "Completed"})
+        runner.analysis_orchestrator.minio_client.get_object = Mock(return_value="n,sum_x2,total\n10,1000,100")
         
         # Run variance analysis (this will store data in the centralized dict)
         # This triggers the full pipeline: task submission, polling, data processing, analysis

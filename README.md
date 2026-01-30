@@ -55,7 +55,7 @@ poetry install
 ### 4. Basic Usage
 
 ```python
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 from analytics_tes import AnalyticsTES
 from analysis_runner import AnalysisRunner
 from string import Template
@@ -64,8 +64,8 @@ import os
 
 # Will use 5STES_PROJECT from environment and 5STES_TOKEN from environment
 analytics_tes = AnalyticsTES()
-engine = AnalysisEngine(tes_client=analytics_tes) 
-analysis_runner = AnalysisRunner(engine)
+orchestrator = AnalysisOrchestrator(tes_client=analytics_tes)
+analysis_runner = AnalysisRunner(tes_client=analytics_tes)
 sql_schema = os.getenv("SQL_SCHEMA", "public")
 
 

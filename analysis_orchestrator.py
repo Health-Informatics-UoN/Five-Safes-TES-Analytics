@@ -13,7 +13,7 @@ from string import Template
 # Load environment variables from .env file
 load_dotenv()
 
-class AnalysisEngine:
+class AnalysisOrchestrator:
     """
     Generic orchestrator class for TES task management.
     Handles task submission, polling, and result collection.
@@ -22,9 +22,10 @@ class AnalysisEngine:
     
     def __init__(self, tes_client: TESClient, token: str = None, project: str = None):
         """
-        Initialize the analysis engine.
-        
+        Initialize the analysis orchestrator.
+
         Args:
+            tes_client (TESClient): TES client instance
             token (str): Authentication token for TRE-FX services
             project (str): Project name for TES tasks (defaults to 5STES_PROJECT env var)
         """
@@ -53,14 +54,14 @@ class AnalysisEngine:
     def setup_analysis(self, analysis_type: str, task_name: str = None, task_description: str = None, bucket: str = None, tres: List[str] = None) -> Tuple[str, str, str, List[str]]:
         """
         Set up common analysis parameters.
-        
+
         Args:
             analysis_type (str): Type of analysis to perform
             task_name (str, optional): Name for the TES task
             task_description (str, optional): Description for the TES task
             bucket (str, optional): MinIO bucket for outputs
             tres (List[str], optional): List of TREs to run analysis on
-            
+
         Returns:
             Tuple[str, str, str, List[str]]: (task_name, task_description, bucket, tres)
         """
@@ -94,13 +95,13 @@ class AnalysisEngine:
         """
         Common workflow: submit TES task, poll for results, and collect data.
         Used by both analytics and bunny analysis types.
-        
+
         Args:
             tes_message (tes.Task): TES task message to submit
             bucket (str): MinIO bucket for outputs
             output_format (str): Output file format (default: "json")
             submit_message (str, optional): Custom message to print when submitting
-            
+
         Returns:
             Tuple[str, List[Dict[str, Any]]]: (task_id, collected_data)
         """
@@ -126,12 +127,12 @@ class AnalysisEngine:
     def _collect_results(self, results_paths: List[str], bucket: str, n_results: int) -> List[str]:
         """
         Collect results from MinIO storage.
-        
+
         Args:
             results_paths (List[str]): List of paths to collect results from
             bucket (str): MinIO bucket name
             n_results (int): Expected number of results
-            
+
         Returns:
             List[str]: Collected data from all sources
         """
@@ -149,4 +150,3 @@ class AnalysisEngine:
         
         print(f"{len(data)} results collected successfully")
         return data
-
