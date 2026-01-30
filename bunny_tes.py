@@ -110,7 +110,7 @@ class BunnyTES(tes_client.TESClient):
         Set the TES message for a TES task.
         """
         self.set_inputs()
-        self.set_outputs(name="", output_path="/outputs", output_type="DIRECTORY", url = "", description = ""
+        self.set_outputs(name="", output_path="/outputs", output_type="DIRECTORY", url = "", description = "")
         self.set_executors(workdir="/app", output_path="/outputs", analysis=analysis)
         self.create_tes_message(task_name=task_name, task_description=task_description)
         self.create_FiveSAFES_TES_message()
