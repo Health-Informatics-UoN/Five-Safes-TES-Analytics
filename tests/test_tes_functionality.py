@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from analytics_tes import AnalyticsTES
 from bunny_tes import BunnyTES
 from metadata_runner import MetadataRunner
-from tes_client import TESClient
+from tes_client import BaseTESClient
 import tes
 
 
@@ -307,7 +307,7 @@ class TestTESMessageStructure:
         assert "--output-format=csv" in command_str
 
 
-class TestTESClientURLConstruction:
+class TestBaseTESClientURLConstruction:
     """Test cases for TES Client URL construction and configuration."""
     
     def test_tes_url_construction(self):

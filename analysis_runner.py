@@ -1,7 +1,7 @@
 from analysis_orchestrator import AnalysisOrchestrator
 from typing import List, Dict, Any, Optional, Union
 from analytics_tes import AnalyticsTES
-from tes_client import TESClient
+from tes_client import BaseTESClient
 from data_processor import DataProcessor
 from statistical_analyzer import StatisticalAnalyzer
 import numpy as np
@@ -11,7 +11,7 @@ from string import Template
 
 class AnalysisRunner:
     def __init__(self, 
-                    tes_client: TESClient = AnalyticsTES(), 
+                    tes_client: BaseTESClient = AnalyticsTES(), 
                     token: str = None, 
                     project: str = None):
         self.analysis_orchestrator = AnalysisOrchestrator(tes_client=tes_client, token=token, project=project)

@@ -142,13 +142,13 @@ Validate data for a given analysis type.
 #### `dict_to_array(contingency_dict: Dict[str, Any]) -> np.ndarray`
 Convert contingency table dictionary to numpy array.
 
-## TESClient
+## BaseTESClient
 
 Handle TES (Task Execution Service) operations.
 
 ### Constructor
 ```python
-TESClient(base_url=None, 
+BaseTESClient(base_url=None, 
           default_image=None,
           default_db_config=None,
           default_db_port=None)
@@ -251,7 +251,7 @@ processed_data = [processor.import_data(data) for data in sample_data]
 ### Environment Variable Configuration
 ```python
 import os
-from tes_client import TESClient
+from tes_client import BaseTESClient
 
 # Configure via environment variables
 os.environ['TES_BASE_URL'] = 'http://your-tes-endpoint:5034/v1/tasks'
@@ -266,7 +266,7 @@ os.environ['MINIO_ENDPOINT'] = 'your-minio-endpoint:9000'
 os.environ['MINIO_OUTPUT_BUCKET'] = 'your-output-bucket-name'
 
 # Client will use environment variables automatically
-client = TESClient()
+client = BaseTESClient()
 ```
 
 ## Error Handling

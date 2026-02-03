@@ -224,7 +224,7 @@ class Tags(TypedDict):
         return "|".join([f"{key}:{value}" for key, value in self.items()])
 
 
-class TESClient(ABC):
+class BaseTESClient(ABC):
     """
     Handles TES (Task Execution Service) operations including task generation and submission.
     """

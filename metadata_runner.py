@@ -1,13 +1,13 @@
 from analysis_orchestrator import AnalysisOrchestrator
 from typing import List, Dict, Any
 from bunny_tes import BunnyTES
-from tes_client import TESClient
+from tes_client import BaseTESClient
 from data_processor import DataProcessor
 import os
 
 class MetadataRunner:
     def __init__(self, 
-                    tes_client: TESClient = BunnyTES(), 
+                    tes_client: BaseTESClient = BunnyTES(), 
                     token: str = None, 
                     project: str = None):
         self.analysis_orchestrator = AnalysisOrchestrator(tes_client=tes_client, token=token, project=project)

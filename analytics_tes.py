@@ -3,7 +3,7 @@ import tes
 from tes import Input, Output, Executor
 from typing import List, Dict, Union
 
-class AnalyticsTES(tes_client.TESClient):
+class AnalyticsTES(tes_client.BaseTESClient):
 
    #### this section will be implemented for each type of task using the pytes classes. Note that many of these fields are set in the submission layer after submission.
     def set_inputs(self) -> None:

@@ -4,7 +4,7 @@ import os
 from tes import Input, Output, Executor
 from typing import List, Dict, Union
 
-class BunnyTES(tes_client.TESClient):
+class BunnyTES(tes_client.BaseTESClient):
 
     def __init__(self, *args, **kwargs):
         """

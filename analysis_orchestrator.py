@@ -4,7 +4,7 @@ import os
 import tes
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
-from tes_client import TESClient
+from tes_client import BaseTESClient
 from tes_client import get_status_description
 from minio_client import MinIOClient
 import polling
@@ -20,12 +20,12 @@ class AnalysisOrchestrator:
     Analysis-specific logic is handled by the AnalysisRunner class.
     """
     
-    def __init__(self, tes_client: TESClient, token: str = None, project: str = None):
+    def __init__(self, tes_client: BaseTESClient, token: str = None, project: str = None):
         """
         Initialize the analysis orchestrator.
 
         Args:
-            tes_client (TESClient): TES client instance
+            tes_client (BaseTESClient): TES client instance
             token (str): Authentication token for TRE-FX services
             project (str): Project name for TES tasks (defaults to 5STES_PROJECT env var)
         """

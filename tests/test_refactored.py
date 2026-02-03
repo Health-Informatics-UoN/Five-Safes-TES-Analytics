@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from data_processor import DataProcessor
 from statistical_analyzer import StatisticalAnalyzer
-from tes_client import TESClient
+from tes_client import BaseTESClient
 from minio_client import MinIOClient
 from analytics_tes import AnalyticsTES
 from analysis_runner import AnalysisRunner

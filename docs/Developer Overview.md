@@ -16,7 +16,7 @@ The code validates and generates the full query based on the user query and comb
 
 ## Task Submission and Management
 
-The TESClient then generates the full TES message to be sent to the TES service based on the arguments of the analysis orchestrator (typically from environment variables), the complete query and the arguments of the run_analysis function. The submission of the TES task returns the task ID. Note that the task ID gives rise to subtask IDs, which are incremented from the task ID. For example, if the task ID is 179, and there are two TREs, the subtasks will be IDs 180 and 181. The subtask IDs are used in the results paths to avoid conflicts. The submission layer is responsible for generating the subtask IDs and ensuring they are saved in appropriate subfolders in the MinIO bucket.
+The BaseTESClient then generates the full TES message to be sent to the TES service based on the arguments of the analysis orchestrator (typically from environment variables), the complete query and the arguments of the run_analysis function. The submission of the TES task returns the task ID. Note that the task ID gives rise to subtask IDs, which are incremented from the task ID. For example, if the task ID is 179, and there are two TREs, the subtasks will be IDs 180 and 181. The subtask IDs are used in the results paths to avoid conflicts. The submission layer is responsible for generating the subtask IDs and ensuring they are saved in appropriate subfolders in the MinIO bucket.
 
 ## Status Monitoring
 
