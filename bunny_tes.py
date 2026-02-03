@@ -76,14 +76,12 @@ class BunnyTES(tes_client.BaseTESClient):
         code, analysis = code_analysis_pairs[analysis.lower()]
 
         self.command = [
-            f"bunny",
             f"--body-json",
             f"{{\"code\":\"{code}\",\"analysis\":\"{analysis}\",\"uuid\":\"123\",\"collection\":\"test\",\"owner\":\"me\"}}",
             f"--output",
             f"{output_path}/output.json",
             f"--no-encode"
-                
-            ]
+        ]
         return None
 
     def set_executors(self, workdir = "/app", output_path="/outputs", analysis: str = "DISTRIBUTION") -> None:

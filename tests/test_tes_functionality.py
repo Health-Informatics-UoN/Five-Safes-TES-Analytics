@@ -563,7 +563,6 @@ class TestBunnyTES:
         bunny_tes._set_command(output_path, code)
         
         assert isinstance(bunny_tes.command, list)
-        assert "bunny" in bunny_tes.command
         assert "--body-json" in bunny_tes.command
         assert "--output" in bunny_tes.command
         
@@ -592,10 +591,10 @@ class TestBunnyTES:
         assert executor.image == bunny_tes.default_image
         assert executor.workdir == "/app"
         
-        # Verify command was set correctly
+        # Verify command was set correctly (args only; entrypoint runs bunny)
         assert isinstance(executor.command, list)
-        assert "bunny" in executor.command
-        
+        assert "--body-json" in executor.command
+
         # Verify environment includes bunny-specific vars
         assert isinstance(executor.env, dict)
         assert "COLLECTION_ID" in executor.env
@@ -639,9 +638,9 @@ class TestBunnyTES:
         executor = task.executors[0]
         assert executor.workdir == "/app"
         
-        # Verify command contains bunny
-        assert "bunny" in executor.command
-        
+        # Verify command has bunny args (entrypoint runs bunny)
+        assert "--body-json" in executor.command
+
         # Verify environment has all necessary bunny vars
         env = executor.env
         assert "COLLECTION_ID" in env
@@ -821,8 +820,7 @@ class TestMetadataRunnerTESIntegration:
         executor = bunny_tes.task.executors[0]
         command = executor.command
         
-        # Verify command structure
-        assert "bunny" in command
+        # Verify command structure (args only; entrypoint runs bunny)
         assert "--body-json" in command
         assert "--output" in command
         
