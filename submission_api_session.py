@@ -30,18 +30,7 @@ Changes
 - AnalysisRunner constructor needs to be modified to except a token session rather than a static string. 
 - Main code block on run_analysis needs to use the token session context manger functionality.
 """
-import time 
-import threading 
-
 import requests 
-
-
-CLIENT_ID = "Dare-Control-API"
-CLIENT_SECRET = "2e60b956-16bc-4dea-8b49-118a8baac5e5"
-USERNAME = "globaladminuser"
-PASSWORD = "password123"
-TOKEN_URL = "http://localhost:8085/realms/Dare-Control/protocol/openid-connect/token"
-LOGOUT_URL = "http://localhost:8085/realms/Dare-Control/protocol/openid-connect/logout"
 
 
 class SubmissionAPISession(): 
