@@ -20,6 +20,7 @@ import argparse
 import subprocess
 import sys
 import os
+import pytest
 import tempfile
 import json
 from pathlib import Path
@@ -76,8 +77,7 @@ def test_docker_build():
     
     container_dir = Path(__file__).parent.parent / "Container"
     if not container_dir.exists():
-        print(f"Error: Container directory {container_dir} not found")
-        return False
+        pytest.fail(f"Container directory {container_dir} not found")
     
     try:
         # Change to container directory
@@ -93,10 +93,9 @@ def test_docker_build():
         if result.stderr:
             print("STDERR:", result.stderr)
         
-        return result.returncode == 0
+        assert result.returncode == 0, f"Docker build failed: {result.stderr}"
     except Exception as e:
-        print(f"Error building Docker container: {e}")
-        return False
+        pytest.fail(f"Error building Docker container: {e}")
     finally:
         os.chdir(original_cwd)
 
@@ -119,10 +118,9 @@ def test_docker_run():
         if result.stderr:
             print("STDERR:", result.stderr)
         
-        return result.returncode == 0
+        assert result.returncode == 0, f"Docker run failed: {result.stderr}"
     except Exception as e:
-        print(f"Error running Docker container: {e}")
-        return False
+        pytest.fail(f"Error running Docker container: {e}")
 
 def test_docker_with_postgres():
     """Test Docker container with PostgreSQL database."""
@@ -145,13 +143,14 @@ def test_docker_with_postgres():
             print("STDERR:", result.stderr)
         
         # This might fail if PostgreSQL is not available, which is expected
-        return True  # Consider it a success if the command structure is correct
+        assert result.returncode == 0, f"PostgreSQL test failed: {result.stderr}"
     except subprocess.TimeoutExpired:
         print("Timeout: PostgreSQL connection test took too long")
-        return True  # Consider it a success if timeout is reasonable
+        # Consider it a success if timeout is reasonable (command structure is correct)
     except Exception as e:
         print(f"Error testing with PostgreSQL: {e}")
-        return True  # Consider it a success if command structure is correct
+        # Consider it a success if command structure is correct
+        pass
 
 def run_all_tests():
     """Run all tests."""

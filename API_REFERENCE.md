@@ -3,13 +3,13 @@
 ## Quick Start
 
 ```python
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 
 # Initialize
-engine = AnalysisEngine(token="your_token", project="YourProject")
+orchestrator = AnalysisOrchestrator(token="your_token", project="YourProject")
 
 # Run analysis
-result = engine.run_mean_analysis(concept_id=21490742, tres=["Nottingham"])
+result = orchestrator.run_mean_analysis(concept_id=21490742, tres=["Nottingham"])
 print(f"Result: {result['result']}")
 ```
 
@@ -37,13 +37,13 @@ MINIO_ENDPOINT=your-minio-endpoint:9000
 MINIO_OUTPUT_BUCKET=your-output-bucket-name
 ```
 
-## AnalysisEngine
+## AnalysisOrchestrator
 
 Main orchestrator class for federated analysis workflow.
 
 ### Constructor
 ```python
-AnalysisEngine(token: str, project: str = None)
+AnalysisOrchestrator(token: str, project: str = None)
 ```
 
 **Parameters:**
@@ -142,13 +142,13 @@ Validate data for a given analysis type.
 #### `dict_to_array(contingency_dict: Dict[str, Any]) -> np.ndarray`
 Convert contingency table dictionary to numpy array.
 
-## TESClient
+## BaseTESClient
 
 Handle TES (Task Execution Service) operations.
 
 ### Constructor
 ```python
-TESClient(base_url=None, 
+BaseTESClient(base_url=None, 
           default_image=None,
           default_db_config=None,
           default_db_port=None)
@@ -208,23 +208,23 @@ Force refresh of credentials.
 
 ### Basic Mean Analysis
 ```python
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 
-engine = AnalysisEngine("your_token")
-result = engine.run_mean_analysis(21490742, ["Nottingham"])
+orchestrator = AnalysisOrchestrator("your_token")
+result = orchestrator.run_mean_analysis(21490742, ["Nottingham"])
 print(f"Mean: {result['result']}")
 ```
 
 ### Custom Query Analysis
 ```python
 from query_builder import QueryBuilder
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
 
 qb = QueryBuilder()
 custom_query = qb.build_summary_stats_query(concept_id=21490742)
 
-engine = AnalysisEngine("your_token")
-result = engine.run_analysis(
+orchestrator = AnalysisOrchestrator("your_token")
+result = orchestrator.run_analysis(
     analysis_type="mean",
     query=custom_query,
     tres=["Nottingham"],
@@ -251,7 +251,7 @@ processed_data = [processor.import_data(data) for data in sample_data]
 ### Environment Variable Configuration
 ```python
 import os
-from tes_client import TESClient
+from tes_client import BaseTESClient
 
 # Configure via environment variables
 os.environ['TES_BASE_URL'] = 'http://your-tes-endpoint:5034/v1/tasks'
@@ -266,7 +266,7 @@ os.environ['MINIO_ENDPOINT'] = 'your-minio-endpoint:9000'
 os.environ['MINIO_OUTPUT_BUCKET'] = 'your-output-bucket-name'
 
 # Client will use environment variables automatically
-client = TESClient()
+client = BaseTESClient()
 ```
 
 ## Error Handling

@@ -1,7 +1,9 @@
+import tes
 import json
 import os
 import requests
-from typing import Dict, Any, List, Tuple
+from abc import ABC, abstractmethod
+from typing import Dict, Any, List, Tuple, TypedDict, Optional, Literal, Union
 from dotenv import load_dotenv
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -205,7 +207,24 @@ def get_status_code(description: str) -> int:
     return -1
 
 
-class TESClient:
+
+### there's already executor, input and output classes in tes.py
+
+#@attrs
+class Tags(TypedDict):
+    """Type definition for tags dictionary, requiring 'Project' and 'tres' keys.
+    Note: tres is stored as a pipe-separated string for py-tes compatibility."""
+    Project: str
+    tres: list[str]
+
+    def to_string(self) -> str:
+        """
+        Convert the tags dictionary to a pipe-separated string.
+        """
+        return "|".join([f"{key}:{value}" for key, value in self.items()])
+
+
+class BaseTESClient(ABC):
     """
     Handles TES (Task Execution Service) operations including task generation and submission.
     """
@@ -218,7 +237,7 @@ class TESClient:
                  default_db_config: Dict[str, str] = None,
                  default_db_port: str = None):
         """
-        Initialize the TES client.
+        Initialize the TES client. These parameters are typically set in the environment variables, and typically represent properties of the submission, not the task.
         
         Args:
             base_url (str): Base URL for the TES API
@@ -235,52 +254,95 @@ class TESClient:
         if TES_url is None:
             parsed = urlparse(self.base_url)
             path = Path(parsed.path) / "v1"
-            self.TES_url = f"{parsed.scheme}://{parsed.netloc}{path}"
+            # Ensure leading slash for URL path
+            path_str = str(path) if str(path).startswith('/') else '/' + str(path)
+            self.TES_url = f"{parsed.scheme}://{parsed.netloc}{path_str}"
         else:
             self.TES_url = TES_url
             
         if submission_url is None:
             parsed = urlparse(self.base_url)
             path = Path(parsed.path) / "api" / "Submission"
-            self.submission_url = f"{parsed.scheme}://{parsed.netloc}{path}"
+            # Ensure leading slash for URL path
+            path_str = str(path) if str(path).startswith('/') else '/' + str(path)
+            self.submission_url = f"{parsed.scheme}://{parsed.netloc}{path_str}"
         else:
             self.submission_url = submission_url
         
+        ## this assumes that the docker image is the same for all tasks - could change the format like with tres to allow multiple with some separator
+        ## but then we'd have to have some way to select the image for the task
         self.default_image = default_image or os.getenv('TES_DOCKER_IMAGE')
         if not self.default_image:
             raise ValueError("TES_DOCKER_IMAGE environment variable is required")
         
         default_db_port = default_db_port or os.getenv('DB_PORT')
-        if not default_db_port:
-            raise ValueError("DB_PORT environment variable is required")
+        #if not default_db_port:
+        #    raise ValueError("DB_PORT environment variable is required")
         
         if default_db_config is None:
             db_host = os.getenv('DB_HOST')
-            if not db_host:
-                raise ValueError("DB_HOST environment variable is required")
+        #    if not db_host:
+        #        raise ValueError("DB_HOST environment variable is required")
             
             db_username = os.getenv('DB_USERNAME')
-            if not db_username:
-                raise ValueError("DB_USERNAME environment variable is required")
+        #    if not db_username:
+        #        raise ValueError("DB_USERNAME environment variable is required")
             
             db_password = os.getenv('DB_PASSWORD')
-            if not db_password:
-                raise ValueError("DB_PASSWORD environment variable is required")
+        #    if not db_password:
+        #        raise ValueError("DB_PASSWORD environment variable is required")
             
             db_name = os.getenv('DB_NAME')
-            if not db_name:
-                raise ValueError("DB_NAME environment variable is required")
+        #    if not db_name:
+        #        raise ValueError("DB_NAME environment variable is required")
             
             self.default_db_config = {
                 "host": db_host,
                 "username": db_username,
                 "password": db_password,
                 "name": db_name,
-                "port": default_db_port
+                "port": default_db_port,
+                "schema": os.getenv('SQL_SCHEMA')
             }
         else:
             self.default_db_config = default_db_config
     
+        self.set_tags()
+        self.task = None
+
+
+    def set_tags(self, tres: List[str] = None) -> None:
+        """
+        Set the tags for a TES task. Tags are a class variable that is set when the client is initialized, but will also return the tags for consistency.
+        """
+        
+        if tres is None:
+            tres = os.getenv('5STES_TRES')
+            if not tres:
+                raise ValueError("5STES_TRES environment variable is required when tres parameter is not provided")
+        
+        # Convert tres to list format for storage
+        if isinstance(tres, list):
+            tres_list = tres
+        elif isinstance(tres, str):
+            # If it's a string, parse it (could be comma or pipe separated)
+            if ',' in tres:
+                tres_list = [tre.strip() for tre in tres.split(',') if tre.strip()]
+            elif '|' in tres:
+                tres_list = [tre.strip() for tre in tres.split('|') if tre.strip()]
+            else:
+                tres_list = [tres.strip()] if tres.strip() else []
+        else:
+            raise ValueError(f"tres must be a list or string, got {type(tres)}")
+        
+        tags = Tags({
+            "Project": os.getenv('5STES_PROJECT'), 
+            "tres": tres_list  # Store as list
+            })
+        self.tags = tags
+
+
+
     
     def _build_api_url(self, base_url: str, endpoint: str, query_params: Dict[str, str] = None) -> str:
         """
@@ -305,63 +367,90 @@ class TESClient:
             url = f"{url}?{query_string}"
         
         return url
-    
-    def generate_tes_task(self,
-                         query: str,
-                         name: str = "analysis test",
-                         image: str = None,
-                         db_config: Dict[str, str] = None,
-                         output_path: str = "/outputs") -> Dict[str, Any]:
+
+########################################################
+    @abstractmethod
+    def set_inputs(self, *args, **kwargs) -> None:
         """
-        Generate a TES task JSON configuration.
+        Set the inputs for a TES task.
+        Subclasses can define their own parameters.
+        """
+        pass
+
+    @abstractmethod
+    def set_outputs(self, *args, **kwargs) -> None:
+        """
+        Set the outputs for a TES task.
+        Subclasses can define their own parameters.
+        Examples:
+        - set_outputs() -> List[Output]
+        - set_outputs(name: str, output_path: str) -> Output
+        """
+        pass
+
+    @abstractmethod
+    def set_executors(self, *args, **kwargs) -> None:
+        """
+        Set the executors for a TES task.
+        Subclasses can define their own parameters.
+        """
+        pass
+    
+    @abstractmethod
+    def set_tes_messages(self, *args, **kwargs) -> None:
+        """
+        Set the TES messages for a TES task. Typically will call set_inputs, set_outputs, and set_executors.
+        Subclasses can define their own parameters.
+        """
+        pass
+########################################################
+
+
+    def create_tes_message(self, task_name: str = "analysis test", task_description: str = "") -> tes.Task:
+        """
+        Create a TES message JSON configuration.
         
         Args:
-            query (str): SQL query to execute
-            name (str): Name of the analysis task
-            image (str): Docker image to use (uses default if None)
-            db_config (Dict[str, str]): Database configuration (uses default if None)
-            output_path (str): Path for output files
-            
-        Returns:
-            Dict[str, Any]: TES task configuration
+            task_name: str
+            task_description: str
+            inputs: tes.Input
+            outputs: tes.Output
+            executors: Union[tes.Executor, List[tes.Executor]] - Single executor or list of executors
         """
-        if image is None:
-            image = self.default_image
-        
-        if db_config is None:
-            db_config = self.default_db_config
-        
-        task = {
-            "name": name,
-            "inputs": [],
-            "outputs": [
-                {
-                    "url": "s3://beacon7283outputtre",
-                    "path": output_path,
-                    "type": "DIRECTORY",
-                    "name": "workdir"
-                }
-            ],
-            "executors": [
-                {
-                    "image": image,
-                    "command": [
-                        f"--Connection=Host={db_config['host']}:{db_config['port']};Username={db_config['username']};Password={db_config['password']};Database={db_config['name']}",
-                        f"--Output={output_path}/output",
-                        f"--Query={query}"
-                    ],
-                    "env": {
-                        "DATASOURCE_DB_DATABASE": db_config['name'],
-                        "DATASOURCE_DB_HOST": db_config['host'],
-                        "DATASOURCE_DB_PASSWORD": db_config['password'],
-                        "DATASOURCE_DB_USERNAME": db_config['username']
-                    },
-                    "workdir": "/app"
-                }
-            ]
-        }
-        return task
+
+
+            
+
+        self.task = tes.Task(
+            name= task_name,
+            description= task_description,
+            inputs= self.inputs,
+            outputs= self.outputs,
+            executors= self.executors
+        )
+        return self.task
     
+    def create_FiveSAFES_TES_message(self, task: tes.Task= None) -> tes.Task:
+        """
+        Create a 5SAFE TES message JSON configuration.
+        """
+        if task is None and self.task is None:
+            task = self.create_tes_message()
+        elif task is None:
+            task = self.task
+        if task.tags is None:
+            task.tags = {}
+        # Convert tres list to pipe-separated string for py-tes compatibility
+        tags_for_task = {
+            "Project": self.tags["Project"],
+            "tres": "|".join(self.tags["tres"]) if isinstance(self.tags["tres"], list) else self.tags["tres"]
+        }
+        task.tags.update(tags_for_task)
+           
+
+        self.task = task
+        return task
+
     def save_tes_task(self, task: Dict[str, Any], output_file: str):
         """
         Save the TES task configuration to a JSON file.
@@ -372,121 +461,8 @@ class TESClient:
         """
         with open(output_file, 'w') as f:
             json.dump(task, f, indent=4)
-    
-    def generate_submission_template(
-        self,
-        name: str = "Analysis Submission Test",
-        description: str = "Federated analysis task",
-        tres: list = ["Nottingham"],
-        project: str = None,
-        output_bucket: str = None,
-        output_path: str = "/outputs",
-        image: str = None,
-        db_config: dict = None,
-        query: str = None,
-        analysis_type: str = None
-    ) -> tuple[dict, int]:
-        """
-        Generate a submission template JSON configuration.
-        
-        Args:
-            name (str): Name of the analysis submission
-            description (str): Description of the analysis task
-            tres (list): List of TREs to run the analysis on
-            project (str): Project name (defaults to 5STES_PROJECT env var)
-            output_bucket (str): S3 bucket name for outputs (defaults to MINIO_OUTPUT_BUCKET env var)
-            output_path (str): Path for output files
-            image (str): Docker image to use
-            db_config (dict): Database configuration
-            query (str): SQL query to execute
-            analysis_type (str): Type of analysis to perform (e.g., 'mean', 'variance', 'PMCC', etc.)
-        
-        Returns:
-            tuple[dict, int]: Submission template configuration and number of TREs
-        """
-        # Use environment variables for project and output bucket if not provided
-        project = project or os.getenv('5STES_PROJECT')
-        if not project:
-            raise ValueError("5STES_PROJECT environment variable is required when project parameter is not provided")
-        
-        output_bucket = output_bucket or os.getenv('MINIO_OUTPUT_BUCKET')
-        if not output_bucket:
-            raise ValueError("MINIO_OUTPUT_BUCKET environment variable is required when output_bucket parameter is not provided")
-        
-        if image is None:
-            image = self.default_image
-        
-        if db_config is None:
-            db_config = self.default_db_config
-        
-        # If a TES task is provided, use its executor configuration
-        if query is None:
-            query = f"SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 21490742"
-        
-        if analysis_type is None:
-            raise ValueError("analysis_type parameter is required")
-        
-        # Construct database connection string in PostgreSQL format
-        db_connection_string = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['name']}"
-        
-        # Output filename without extension (will be .json or .csv based on output-format)
-        output_filename = f"{output_path}/output"
-        
-        executors = [{
-            "image": image,
-            "command": [
-                f"--user-query={query}",
-                f"--analysis={analysis_type}",
-                f"--db-connection={db_connection_string}",
-                f"--output-filename={output_filename}",
-                "--output-format=json"
-            ],
-            "env": {
-                "DATASOURCE_DB_DATABASE": db_config['name'],
-                "DATASOURCE_DB_HOST": db_config['host'],
-                "DATASOURCE_DB_PASSWORD": db_config['password'],
-                "DATASOURCE_DB_USERNAME": db_config['username']
-            },
-            "workdir": "/app"
-        }]
-        
-        template = {
-            "id": None,
-            "name": name,
-            "description": description,
-            "inputs": None,
-            "outputs": [
-                {
-                    "name": "workdir",
-                    "description": "analysis test output",
-                    "url": f"s3://{output_bucket}",
-                    "path": output_path,
-                    "type": "DIRECTORY"
-                }
-            ],
-            "resources": None,
-            "executors": executors,
-            "volumes": None,
-            "tags": {
-                "Project": project,
-                "tres": "|".join(tres)
-            },
-            "logs": None,
-            "creation_time": None
-        }
-        return template, len(tres)
-    
-    def save_submission_template(self, template: Dict[str, Any], output_file: str):
-        """
-        Save the submission template configuration to a JSON file.
-        
-        Args:
-            template (Dict[str, Any]): Submission template configuration
-            output_file (str): Path to save the JSON file
-        """
-        with open(output_file, 'w') as f:
-            json.dump(template, f, indent=4)
-    
+      
+  
     def generate_curl_command(self, template: Dict[str, Any]) -> str:
         """
         Generate a curl command for submitting the template.
@@ -510,12 +486,12 @@ class TESClient:
         
         return curl_command
     
-    def submit_task(self, template: Dict[str, Any], token: str) -> Dict[str, Any]:
+    def submit_task(self, template: Union[Dict[str, Any], tes.Task], token: str) -> Dict[str, Any]:
         """
         Submit a TES task using the requests library.
         
         Args:
-            template (Dict[str, Any]): The TES task template
+            template (Union[Dict[str, Any], tes.Task]): The TES task template or task object
             token (str): Authentication token
             
         Returns:
@@ -524,6 +500,11 @@ class TESClient:
         Raises:
             requests.exceptions.RequestException: If the request fails
         """
+        if isinstance(template, tes.Task):
+            template = template.as_dict()
+
+        ### adds a description to the 5STES message
+        template["description"] = "test"
         headers = {
             'accept': 'text/plain',
             'Authorization': f'Bearer {token}',
@@ -576,60 +557,3 @@ class TESClient:
             ## if it fails again, it will raise an exception
             #raise
 
-
-
-
-if __name__ == "__main__":
-    # Test URL construction
-    print("Testing URL construction...")
-    
-    # Create a test client with a sample base URL
-    test_base_url = "https://api.example.com/"
-    client = TESClient(base_url=test_base_url)
-    
-    # Test URL joining
-    print(f"Base URL: {client.base_url}")
-    print(f"TES URL: {client.TES_url}")
-    print(f"Submission URL: {client.submission_url}")
-    
-    # Test API URL building
-    tasks_url = client._build_api_url(client.TES_url, "tasks")
-    print(f"Tasks URL: {tasks_url}")
-    
-    # Test with query parameters
-    status_url = client._build_api_url(client.TES_url, "123", {"view": "FULL"})
-    print(f"Status URL: {status_url}")
-    
-    # Test with trailing slashes using pathlib directly
-    parsed = urlparse("https://api.example.com/")
-    path = Path(parsed.path) / "v1" / "tasks"
-    test_url = f"{parsed.scheme}://{parsed.netloc}{path}"
-    print(f"Test URL with trailing slash: {test_url}")
-    
-    # Example usage
-    print("\n" + "="*50)
-    print("Example usage:")
-    
-    # Generate a simple task
-    task = client.generate_tes_task(
-        query="SELECT COUNT(*) FROM measurement WHERE measurement_concept_id = 21490742",
-        name="Test Analysis"
-    )
-    
-    # Save to file
-    client.save_tes_task(task, "tes-task.json")
-    
-    # Generate submission template
-    template, n_tres = client.generate_submission_template(
-        name="Test Submission",
-        tres=["Nottingham", "Nottingham 2"],
-        project="TestProject"
-    )
-    
-    # Save template
-    client.save_submission_template(template, "submission_template.json")
-    
-    # Generate curl command
-    curl_cmd = client.generate_curl_command(template)
-    print("\nCurl command for submission:")
-    print(curl_cmd) 

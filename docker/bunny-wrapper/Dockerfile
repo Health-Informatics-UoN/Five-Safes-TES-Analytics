@@ -13,4 +13,4 @@ RUN chmod +x /entrypoint.sh
 
 # run the entrypoint as the base image's non-root user
 USER app
-ENTRYPOINT [ "./entrypoint.sh" ]
+ENTRYPOINT [ "/entrypoint.sh" ]

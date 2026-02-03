@@ -55,27 +55,40 @@ poetry install
 ### 4. Basic Usage
 
 ```python
-from analysis_engine import AnalysisEngine
+from analysis_orchestrator import AnalysisOrchestrator
+from analytics_tes import AnalyticsTES
+from analysis_runner import AnalysisRunner
+from string import Template
+import os
 
-# Initialize the engine (uses environment variables automatically)
-engine = AnalysisEngine("your_token", project="YourProject")
+
+# Will use 5STES_PROJECT from environment and 5STES_TOKEN from environment
+analytics_tes = AnalyticsTES()
+orchestrator = AnalysisOrchestrator(tes_client=analytics_tes)
+analysis_runner = AnalysisRunner(tes_client=analytics_tes)
+sql_schema = os.getenv("SQL_SCHEMA", "public")
+
+
 
 # Define your own SQL query
-custom_query = """WITH user_query AS (
-  SELECT value_as_number FROM public.measurement 
+query_template = Template("""WITH user_query AS (
+  SELECT value_as_number FROM $schema.measurement 
   WHERE measurement_concept_id = 21490742
   AND value_as_number IS NOT NULL
 )
 SELECT
   COUNT(value_as_number) AS n,
   SUM(value_as_number) AS total
-FROM user_query;"""
+FROM user_query;""")
+
+custom_query = query_template.safe_substitute(schema=sql_schema)
 
 # Run the analysis
-result = engine.run_analysis(
+result = analysis_runner.run_analysis(
     analysis_type="mean",
-    query=custom_query,
-    tres=["Nottingham", "Nottingham 2"]
+    task_name="DEMO: mean analysis test",
+    user_query=custom_query,
+    tres=["Nottingham","Nottingham 2"]
 )
 
 print(f"Analysis result: {result}")
