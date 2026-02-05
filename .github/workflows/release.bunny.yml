@@ -6,6 +6,8 @@ name: Publish a Bunny CLI image compatible with Five Safes TES.
 on:
   schedule:
     - cron: "0 0 * * *"  
+  push: 
+    branches : ["add-ci-build-for-bunny-analytics-image"]
 env:
   image-name: five-safes-tes-analytics-bunny-cli
   repo-owner: ${{ github.repository_owner }}

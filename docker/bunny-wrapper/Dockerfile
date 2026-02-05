@@ -12,6 +12,9 @@ USER root
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# run the entrypoint as the base image's non-root user
-USER app
+# Running as root temporarily because TES (via Funnel) mounts the outputs volume
+# which requires root permissions to write to. 
+# Once this is resolved, we can switch back to USER app.
+# USER app
+
 ENTRYPOINT [ "./entrypoint.sh" ]
