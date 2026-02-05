@@ -27,9 +27,9 @@ The custom entrypoint does the following:
 
 That's all.
 
-### Continuous Integration (CI)
+## Continuous Integration (CI)
 
-This repository includes a GitHub Actions workflow that automatically builds and publishes the Bunny CLI wrapper image for Five Safes TES. The workflow tracks the latest released version of Bunny and only creates a new image if one for that release does not already exist.
+This repository includes a GitHub Actions workflow `release.bunny.yml` that automatically builds and publishes the Bunny CLI wrapper image for Five Safes TES. The workflow tracks the latest released version of Bunny and only creates a new image if one for that release does not already exist.
 
 Each published image is labeled to match the corresponding upstream Bunny release. Because this wrapper directly tracks Bunny versions, the repository does not maintain an independent semantic versioning lifecycle.
 
