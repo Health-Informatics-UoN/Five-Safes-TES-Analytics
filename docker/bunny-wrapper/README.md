@@ -16,6 +16,8 @@ It does the following above and beyond the base image:
 
 - Adds an alternate entrypoint which maps the variables needed and executes Bunny in CLI mode explicitly
 
+- Accepts `BUNNY_VERSION` as a build argument to select the base Bunny image version
+
 ### `entrypoint.sh`
 
 The custom entrypoint does the following:
