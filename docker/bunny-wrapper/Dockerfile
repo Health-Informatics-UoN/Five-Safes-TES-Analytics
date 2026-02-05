@@ -1,4 +1,5 @@
-FROM ghcr.io/health-informatics-uon/hutch/bunny:1.6
+ARG BUNNY_VERSION=1.6
+FROM ghcr.io/health-informatics-uon/hutch/bunny:${BUNNY_VERSION}
 
 # Specify non-CLI "required" config so users don't have to
 ENV TASK_API_BASE_URL https://example.com
@@ -11,6 +12,9 @@ USER root
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# run the entrypoint as the base image's non-root user
-USER app
+# Running as root temporarily because TES (via Funnel) mounts the outputs volume
+# which requires root permissions to write to. 
+# Once this is resolved, we can switch back to USER app.
+# USER app
+
 ENTRYPOINT [ "./entrypoint.sh" ]
