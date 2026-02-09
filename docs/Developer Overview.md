@@ -2,13 +2,13 @@
 
 ## Overview
 
-The analytics are performed by an AnalysisEngine object. This only takes two arguments - an auth token and a project name, but these are usually both defined in environment variables. The token can be obtained from the submission web UI, and pasted into the .env file.
+The analytics are performed by an AnalysisOrchestrator object. This only takes two arguments - an auth token and a project name, but these are usually both defined in environment variables. The token can be obtained from the submission web UI, and pasted into the .env file.
 
-The analytics engine creates all the necessary objects to handle the various communications, check status, poll for results and return results to the user. It also stores the returned results, so that they can be reused for mathematically related queries, and the user can see returned results.
+The analysis orchestrator creates all the necessary objects to handle the various communications, check status, poll for results and return results to the user. It also stores the returned results, so that they can be reused for mathematically related queries, and the user can see returned results.
 
 ## Core Workflow
 
-`AnalysisEngine.run_analysis()` is the core function. This runs all the required steps sequentially. This requires the parameters of the query, including the query itself, analysis type, the TREs to query and some further optional arguments. 
+`AnalysisRunner.run_analysis()` is the core function. This runs all the required steps sequentially. This requires the parameters of the query, including the query itself, analysis type, the TREs to query and some further optional arguments. 
 
 ## Query Processing
 
@@ -16,7 +16,7 @@ The code validates and generates the full query based on the user query and comb
 
 ## Task Submission and Management
 
-The TESClient then generates the full TES message to be sent to the TES service based on the arguments of the analysis engine (typically from environment variables), the complete query and the arguments of the run_analysis function. The submission of the TES task returns the task ID. Note that the task ID gives rise to subtask IDs, which are incremented from the task ID. For example, if the task ID is 179, and there are two TREs, the subtasks will be IDs 180 and 181. The subtask IDs are used in the results paths to avoid conflicts. The submission layer is responsible for generating the subtask IDs and ensuring they are saved in appropriate subfolders in the MinIO bucket.
+The BaseTESClient then generates the full TES message to be sent to the TES service based on the arguments of the analysis orchestrator (typically from environment variables), the complete query and the arguments of the run_analysis function. The submission of the TES task returns the task ID. Note that the task ID gives rise to subtask IDs, which are incremented from the task ID. For example, if the task ID is 179, and there are two TREs, the subtasks will be IDs 180 and 181. The subtask IDs are used in the results paths to avoid conflicts. The submission layer is responsible for generating the subtask IDs and ensuring they are saved in appropriate subfolders in the MinIO bucket.
 
 ## Status Monitoring
 

@@ -1,7 +1,7 @@
 import pytest
 import polling
 
-from tes_client import TESClient, get_status_description
+from tes_client import BaseTESClient, get_status_description
 from minio_client import MinIOClient
 
 
