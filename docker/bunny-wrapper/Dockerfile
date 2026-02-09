@@ -17,4 +17,4 @@ RUN chmod +x /entrypoint.sh
 # Once this is resolved, we can switch back to USER app.
 # USER app
 
-ENTRYPOINT [ "./entrypoint.sh" ]
+ENTRYPOINT [ "/entrypoint.sh" ]

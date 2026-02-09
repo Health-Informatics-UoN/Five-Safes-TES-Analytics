@@ -275,6 +275,38 @@ class PercentileSketchAnalysis(AnalysisBase):
     def analyze(self, aggregated_data: np.ndarray, percentile: float) -> float:
         return self.aggregated_data["percentile_sketch"].percentile(percentile)
 
+
+class MetadataAnalysis(AnalysisBase):
+    ## placeholder for now, this is where the metadata analysis will go.
+    
+    """Analysis class for calculating metadata values."""
+    
+    def __init__(self):
+        self.aggregated_data = {}
+    
+    @property
+    def return_format(self) -> dict:
+        return {"n": None, "total": None}
+    
+    def aggregate_data(self, input_data: Union[np.ndarray, List[np.ndarray], Dict[str, List[float]]]) -> Union[np.ndarray, Dict[str, List[float]]]:
+        """Aggregate data for mean calculation."""
+        if isinstance(input_data, dict):
+            
+            n = np.sum(np.array(input_data["n"]))
+            total = np.sum(np.array(input_data["total"]))
+
+            
+        elif isinstance(input_data, list) or isinstance(input_data, np.ndarray):
+            n, total = np.sum(np.vstack(input_data), axis=0)
+        self.aggregated_data.update({"n": n, "total": total})
+        return self.aggregated_data
+    
+    def analyze(self) -> float:
+        """Calculate mean from aggregated values."""
+
+        return self.aggregated_data["total"] / self.aggregated_data["n"]
+
+
 def get_statistical_analysis_registry():
     """Get registry of all statistical analysis classes."""
     registry = {}

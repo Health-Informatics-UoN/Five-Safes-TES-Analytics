@@ -46,9 +46,7 @@ class MinIOClient:
         
         self._client = None
         self._credentials = None
-        self.credentials = None
-        self.credentials_expiry = None
-    
+        
     def _exchange_token_for_credentials(self) -> Dict[str, str]:
         """
         Exchange OIDC token for temporary AWS credentials.
