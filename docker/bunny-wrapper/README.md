@@ -10,13 +10,13 @@ It is intended for running Bunny in CLI mode only!
 
 The Dockerfile is based on official Bunny images.
 
-`// TODO: parameterise version and CI things so we automatically build for every official Bunny release?`
-
 It does the following above and beyond the base image:
 
 - Automatically provides default dummy values for required daemon mode settings, so that people running this CLI image don't have to provide config that won't be used.
 
 - Adds an alternate entrypoint which maps the variables needed and executes Bunny in CLI mode explicitly
+
+- Accepts `BUNNY_VERSION` as a build argument to select the base Bunny image version
 
 ### `entrypoint.sh`
 
@@ -26,6 +26,12 @@ The custom entrypoint does the following:
   - with the correct environment variables exported, with their values set to the 5S-TES default environment variables.
 
 That's all.
+
+## Continuous Integration (CI)
+
+This repository includes a GitHub Actions workflow `release.bunny.yml` that automatically builds and publishes the Bunny CLI wrapper image for Five Safes TES. The workflow tracks the latest released version of Bunny and only creates a new image if one for that release does not already exist.
+
+Each published image is labeled to match the corresponding upstream Bunny release. Because this wrapper directly tracks Bunny versions, the repository does not maintain an independent semantic versioning lifecycle.
 
 ## Testing
 
