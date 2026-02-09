@@ -32,18 +32,22 @@ class AnalyticsTES(tes_client.BaseTESClient):
         }
         return None
 
-    def _set_command(self, query: str, analysis_type: str, output_path: str, output_format: str = "json") -> None:
+    def _set_command(self, query: str, output_path: str, output_format: str = "json") -> None:
         """
         Set the command for a TES task.
         """
-
-        connection_string = f"postgresql://postgres:{self.default_db_config['password']}@{self.default_db_config['host']}:{self.default_db_config['port']}/{self.default_db_config['name']}"
+        connection_string = (
+            f"Host={self.default_db_config['host']};"
+            f"Port={self.default_db_config['port']};"
+            f"Username={self.default_db_config['username']};"
+            f"Password={self.default_db_config['password']};"
+            f"Database={self.default_db_config['name']};"
+            f"SearchPath={self.default_db_config['schema']}"
+        )
         self.command = [
-            f"--user-query={query}",
-            f"--analysis={analysis_type}",
-            f"--db-connection={connection_string}",
-            f"--output-filename={output_path}/output",
-            f"--output-format={output_format}"
+            f"--Query={query}",              
+            f"--Output={output_path}/output.{output_format}",
+            f"--Connection={connection_string}"
         ]
         return None
 
