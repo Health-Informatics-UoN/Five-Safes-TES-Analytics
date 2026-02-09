@@ -8,7 +8,7 @@ The analysis orchestrator creates all the necessary objects to handle the variou
 
 ## Core Workflow
 
-`AnalysisOrchestrator.run_analysis()` is the core function. This runs all the required steps sequentially. This requires the parameters of the query, including the query itself, analysis type, the TREs to query and some further optional arguments. 
+`AnalysisRunner.run_analysis()` is the core function. This runs all the required steps sequentially. This requires the parameters of the query, including the query itself, analysis type, the TREs to query and some further optional arguments. 
 
 ## Query Processing
 
