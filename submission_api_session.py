@@ -120,15 +120,33 @@ class SubmissionAPISession():
         self._access_token = None
         self._refresh_token = None
 
-    def request(self, method, url, **kwargs):
-        headers = kwargs.pop("headers", {})
-        headers["Authorization"] = f"Bearer {self.access_token}"
-        kwargs["headers"] = headers
+    def request(self, method, url, token_in="header", token_field="Authorization", **kwargs):
+        kwargs = kwargs.copy()
+        headers = dict(kwargs.pop("headers", {}))
+        data = dict(kwargs.pop("data", {}))
 
-        r = requests.request(method, url, **kwargs)
-        if r.status_code == 401:
+        if token_in == "header":
+            headers[token_field] = f"Bearer {self.access_token}"
+        elif token_in == "body":
+            data[token_field] = self.access_token
+        else:
+            raise ValueError(f"Unknown token_in value: {token_in}")
+
+
+        kwargs["headers"] = headers
+        kwargs["data"] = data
+
+        response = requests.request(method, url, **kwargs)
+
+        if response.status_code == 401:
             self._refresh()
-            headers["Authorization"] = f"Bearer {self.access_token}"
+            if token_in == "header":
+                headers[token_field] = f"Bearer {self.access_token}"
+            else:
+                data[token_field] = self.access_token
             kwargs["headers"] = headers
-            r = requests.request(method, url, **kwargs)
-        return r
+            kwargs["data"] = data
+            response = requests.request(method, url, **kwargs)
+
+        return response
+        
