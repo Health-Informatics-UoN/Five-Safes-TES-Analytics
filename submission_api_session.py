@@ -132,7 +132,6 @@ class SubmissionAPISession():
         else:
             raise ValueError(f"Unknown token_in value: {token_in}")
 
-
         kwargs["headers"] = headers
         kwargs["data"] = data
 
