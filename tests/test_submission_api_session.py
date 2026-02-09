@@ -1,7 +1,5 @@
 from unittest.mock import patch, Mock 
 
-import pytest 
-
 from submission_api_session import SubmissionAPISession 
 
 
@@ -11,11 +9,6 @@ USERNAME = "globaladminuser"
 PASSWORD = "password123"
 TOKEN_URL = "http://localhost:8085/realms/Dare-Control/protocol/openid-connect/token"
 LOGOUT_URL = "http://localhost:8085/realms/Dare-Control/protocol/openid-connect/logout"
-
-
-@pytest.fixture
-def mock_response(): 
-    pass 
 
 
 def test_login_successful():
@@ -162,15 +155,33 @@ def test_request_retries_on_401():
         assert session.refresh_token == "456"
 
 
-def test_request_adds_authorisation_header(): 
-    pass 
-
-
 def test_logout_successful(): 
-    pass 
+    with patch("submission_api_session.requests") as _: 
+        session = SubmissionAPISession(
+            client_id="fake_client", 
+            client_secret="fake_secret", 
+            username="username", 
+            password="password", 
+            token_url="token_url", 
+            logout_url="logout_url"
+        ) 
+        session._access_token = "abc"
+        session._refresh_token = "xyz"
+
+        session._logout()
+
+        assert session.access_token is None 
+        assert session.refresh_token is None
 
 
-def test_submission_api_session_context_manager(): 
-    pass 
+def test_context_manager_calls_login_and_logout():
+    with patch.object(SubmissionAPISession, "_login") as login, \
+         patch.object(SubmissionAPISession, "_logout") as logout:
 
+        with SubmissionAPISession(
+            "id", "secret", "user", "pass", "token", "logout"
+        ):
+            pass
 
+        login.assert_called_once()
+        logout.assert_called_once()
