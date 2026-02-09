@@ -10,6 +10,9 @@ import xml.etree.ElementTree as ET
 import csv
 from io import StringIO
 
+from submission_api_session import SubmissionAPISession
+
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -23,7 +26,8 @@ class MinIOClient:
     Handles MinIO operations including token exchange and object retrieval.
     """
     
-    def __init__(self, token: str, 
+    def __init__(self, 
+                 token_session: SubmissionAPISession = None, 
                  sts_endpoint: str = None,
                  minio_endpoint: str = None):
         """
@@ -34,7 +38,7 @@ class MinIOClient:
             sts_endpoint (str): STS endpoint URL
             minio_endpoint (str): MinIO endpoint URL
         """
-        self.token = token
+        self.token_session = token_session 
         # Use environment variables - required
         self.sts_endpoint = sts_endpoint or os.getenv('MINIO_STS_ENDPOINT')
         if not self.sts_endpoint:
@@ -59,7 +63,6 @@ class MinIOClient:
             Exception: If token exchange fails
         """
         headers = {
-            'Authorization': f'Bearer {self.token}',
             'Content-Type': 'application/x-www-form-urlencoded'
         }
         
@@ -71,7 +74,15 @@ class MinIOClient:
         }
         
         print("Exchanging token for credentials...")
-        response = requests.post(self.sts_endpoint, headers=headers, data=data)
+
+        response = self.token_session.request(
+            method="POST",
+            url=self.sts_endpoint, 
+            token_in="body",
+            token_field="WebIdentityToken",
+            headers=headers, 
+            data=data
+        )
         
         if response.status_code != 200:
             print(f"STS Response Status: {response.status_code}")
