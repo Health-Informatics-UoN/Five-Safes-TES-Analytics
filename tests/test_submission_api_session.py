@@ -1,14 +1,7 @@
 from unittest.mock import patch, Mock 
+import pytest 
 
 from submission_api_session import SubmissionAPISession 
-
-
-CLIENT_ID = "Dare-Control-API"
-CLIENT_SECRET = "2e60b956-16bc-4dea-8b49-118a8baac5e5"
-USERNAME = "globaladminuser"
-PASSWORD = "password123"
-TOKEN_URL = "http://localhost:8085/realms/Dare-Control/protocol/openid-connect/token"
-LOGOUT_URL = "http://localhost:8085/realms/Dare-Control/protocol/openid-connect/logout"
 
 
 def test_login_successful():
@@ -185,3 +178,30 @@ def test_context_manager_calls_login_and_logout():
 
         login.assert_called_once()
         logout.assert_called_once()
+
+
+class TestSubmissionAPISessionIntegration: 
+    """
+    These tests are disabled by default as they require a deployed version of 5STES. However, if ran 
+    they test the interaction of the SubmissionAPISession with an actual instance of a 5STES submission 
+    layer. 
+    """
+    @pytest.mark.integration
+    def test_login_on_real_submission_api_endpoint(): 
+        pass 
+
+
+    @pytest.mark.integration 
+    def test_refresh_on_real_submission_api_endpoint(): 
+        pass 
+
+
+class TestSubmissionAPISessionEndToEnd: 
+    """
+    Test a complete run of an analysis job from TES message submission to polling and 
+    retrieval of results. 
+    """
+    def test_token_fetching_and_refresh_end_to_end_with_mean_analysis(): 
+        with SubmissionAPISession() as token_session: 
+            pass
+        
