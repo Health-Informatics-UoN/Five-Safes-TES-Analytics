@@ -23,23 +23,23 @@ class BunnyFile(BaseModel):
 class BunnyQueryResult(BaseModel):
     count: int
     datasetCount: int
-    files: list[BunnyFile]
+    files: dict[str, BunnyFile]
     
-    # @model_validator(mode="before")
-    # @classmethod
-    # def hoist_filenames(cls, data=Any) -> Any:
-    #     if not isinstance(data, dict):
-    #         return data
-    #     else:
-    #         if "files" in data:
-    #             files = {(file["file_name"], file) for file in data["files"]}
-    #             return {
-    #                     "count": data["count"],
-    #                     "datasetCount": data["datasetCount"],
-    #                     "files": files,
-    #                     }
-    #         else:
-    #             return data
+    @model_validator(mode="before")
+    @classmethod
+    def hoist_filenames(cls, data=Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        else:
+            if "files" in data:
+                files = {file["file_name"]: file for file in data["files"]}
+                return {
+                        "count": data["count"],
+                        "datasetCount": data["datasetCount"],
+                        "files": files,
+                        }
+            else:
+                return data
 
 
 
