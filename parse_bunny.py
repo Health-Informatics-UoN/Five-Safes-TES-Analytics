@@ -2,6 +2,7 @@ from pydantic import BaseModel, model_validator
 import polars as pl
 from io import StringIO
 from typing import Any
+import json
 
 class BunnyFile(BaseModel):
     file_name: str
@@ -20,25 +21,25 @@ class BunnyFile(BaseModel):
 
 
 class BunnyQueryResult(BaseModel):
-    count: str
-    datasetCount: str
-    files: dict[str, BunnyFile]
+    count: int
+    datasetCount: int
+    files: list[BunnyFile]
     
-    @model_validator(mode="before")
-    @classmethod
-    def hoist_filenames(cls, data=Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        else:
-            if "files" in data:
-                files = {(file["file_name"], file) for file in data["files"]}
-                return {
-                        "count": data["count"],
-                        "datasetCount": data["datasetCount"],
-                        "files": files,
-                        }
-            else:
-                return data
+    # @model_validator(mode="before")
+    # @classmethod
+    # def hoist_filenames(cls, data=Any) -> Any:
+    #     if not isinstance(data, dict):
+    #         return data
+    #     else:
+    #         if "files" in data:
+    #             files = {(file["file_name"], file) for file in data["files"]}
+    #             return {
+    #                     "count": data["count"],
+    #                     "datasetCount": data["datasetCount"],
+    #                     "files": files,
+    #                     }
+    #         else:
+    #             return data
 
 
 
@@ -52,5 +53,6 @@ class BunnyTSVOutput(BaseModel):
 
 def parse_bunny(path) -> pl.DataFrame:
     with open(path, "r") as f:
-        bunny_output = BunnyTSVOutput.model_validate(f)
+        bunny_json = json.load(f)
+        bunny_output = BunnyTSVOutput.model_validate(bunny_json)
     return bunny_output.queryResult.files["code.distribution"].parse_table()
