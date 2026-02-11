@@ -187,21 +187,31 @@ class TestSubmissionAPISessionIntegration:
     layer. 
     """
     @pytest.mark.integration
-    def test_login_on_real_submission_api_endpoint(): 
-        pass 
-
+    def test_login_on_real_submission_api_endpoint(self): 
+        with SubmissionAPISession() as session: 
+            assert isinstance(session.access_token, str) 
+            assert isinstance(session.refresh_token, str)
+            assert session.access_token.count(".") == 2
+            assert session.refresh_token.count(".") == 2
 
     @pytest.mark.integration 
-    def test_refresh_on_real_submission_api_endpoint(): 
+    def test_refresh_on_real_submission_api_endpoint(self): 
+        with SubmissionAPISession() as session: 
+            access_token_before_refresh = session.access_token
+            refresh_token_before_refresh = session.refresh_token 
+
+            session._refresh()
+
+            access_token_post_refresh = session.access_token
+            refresh_token_post_refresh = session.refresh_token 
+
+            assert isinstance(session.access_token, str) 
+            assert isinstance(session.refresh_token, str)
+            assert session.access_token.count(".") == 2
+            assert session.refresh_token.count(".") == 2
+            assert access_token_before_refresh != access_token_post_refresh 
+            assert refresh_token_before_refresh != refresh_token_post_refresh 
+
+    @pytest.mark.integration 
+    def test_token_fetching_and_refreshing_with_mean_analysis(self): 
         pass 
-
-
-class TestSubmissionAPISessionEndToEnd: 
-    """
-    Test a complete run of an analysis job from TES message submission to polling and 
-    retrieval of results. 
-    """
-    def test_token_fetching_and_refresh_end_to_end_with_mean_analysis(): 
-        with SubmissionAPISession() as token_session: 
-            pass
-        

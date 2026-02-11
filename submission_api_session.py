@@ -32,18 +32,22 @@ Changes
 """
 import os 
 
+from dotenv import load_dotenv
 import requests 
+
+
+load_dotenv()
 
 
 class SubmissionAPISession(): 
     def __init__(
         self, 
-        client_id: str,
-        client_secret: str, 
-        username: str, 
-        password: str, 
-        token_url: str, 
-        logout_url: str 
+        client_id: str = None,
+        client_secret: str = None, 
+        username: str = None, 
+        password: str = None, 
+        token_url: str = None, 
+        logout_url: str = None  
     ):
         self.client_id = client_id or os.getenv("SubmissionAPIKeyCloakClientId")
         self.client_secret = client_secret or os.getenv("SubmissionAPIKeyCloakSecret")
@@ -54,6 +58,25 @@ class SubmissionAPISession():
 
         self._access_token = None
         self._refresh_token = None
+
+        self._validate_config()
+
+    def _validate_config(self): 
+        required = {
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "username": self.username,
+            "password": self.password,
+            "token_url": self.token_url,
+            "logout_url": self.logout_url,
+        }
+
+        missing = [k for k, v in required.items() if not v]
+        if missing:
+            raise ValueError(
+                f"Missing required Submission API configuration: {', '.join(missing)}"
+                "Please make sure these are present in the .env file!"
+            )
 
     def __enter__(self):
         self._login()
