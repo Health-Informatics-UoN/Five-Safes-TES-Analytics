@@ -30,6 +30,8 @@ Changes
 - AnalysisRunner constructor needs to be modified to except a token session rather than a static string. 
 - Main code block on run_analysis needs to use the token session context manger functionality.
 """
+import os 
+
 import requests 
 
 
@@ -43,12 +45,12 @@ class SubmissionAPISession():
         token_url: str, 
         logout_url: str 
     ):
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.username = username
-        self.password = password
-        self.token_url = token_url
-        self.logout_url = logout_url
+        self.client_id = client_id or os.getenv("SubmissionAPIKeyCloakClientId")
+        self.client_secret = client_secret or os.getenv("SubmissionAPIKeyCloakSecret")
+        self.username = username or os.getenv("SubmissionAPIKeyCloakUsername")
+        self.password = password or os.getenv("SubmissionAPIKeyCloakPassword")
+        self.token_url = token_url or os.getenv("SubmissionAPIKeyCloakTokenUrl")
+        self.logout_url = logout_url or os.getenv("SubmissionAPIKeyCloakLogoutUrl")
 
         self._access_token = None
         self._refresh_token = None
