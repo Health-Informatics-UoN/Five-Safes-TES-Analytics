@@ -4,18 +4,17 @@ from analytics_tes import AnalyticsTES
 from tes_client import BaseTESClient
 from data_processor import DataProcessor
 from statistical_analyzer import StatisticalAnalyzer
+from submission_api_session import SubmissionAPISession 
 import numpy as np
 import os
 from string import Template
 
 
 class AnalysisRunner:
-    def __init__(self, 
-                    tes_client: BaseTESClient = AnalyticsTES(), 
-                    token: str = None, 
-                    project: str = None):
-        self.analysis_orchestrator = AnalysisOrchestrator(tes_client=tes_client, token=token, project=project)
-        self.tes_client = self.analysis_orchestrator.tes_client
+    def __init__(self, tes_client: BaseTESClient = AnalyticsTES(), project: str = None):
+        self.analysis_orchestrator = None 
+        self.tes_client = tes_client
+        self.project = project 
         # Own instances for aggregation and analysis
         self.data_processor = DataProcessor()
         self.statistical_analyzer = StatisticalAnalyzer()
@@ -43,57 +42,59 @@ class AnalysisRunner:
         Returns:
             Dict[str, Any]: Analysis results
         """
+        with SubmissionAPISession() as token_session: 
+            self.analysis_orchestrator = AnalysisOrchestrator(self.tes_client, token_session=token_session, project=self.project)
 
-        task_name, task_description, bucket, tres = self.analysis_orchestrator.setup_analysis(analysis_type, task_name, task_description, bucket, tres)
-        
-        # Check if we should run on existing data (returns early if so)
-        existing_data_result = self.check_analysis_on_existing_data(analysis_type, user_query, tres)
-        if existing_data_result is not None:
-            return existing_data_result
-        
-        ### create the TES message for the analysis
-        
-        self.tes_client.set_tes_messages(
-            query=user_query,
-            analysis_type=analysis_type,
-            task_name=task_name,
-            task_description=task_description,
-            output_format="json",
-        )
-        self.tes_client.set_tags(tres=self.analysis_orchestrator.tres)
-        five_Safes_TES_message = self.tes_client.create_FiveSAFES_TES_message()
-                
-
-        # Submit task and collect results (common workflow)
-        try:
-            task_id, data = self.analysis_orchestrator._submit_and_collect_results(
-                five_Safes_TES_message,
-                bucket,
+            task_name, task_description, bucket, tres = self.analysis_orchestrator.setup_analysis(analysis_type, task_name, task_description, bucket, tres)
+            
+            # Check if we should run on existing data (returns early if so)
+            existing_data_result = self.check_analysis_on_existing_data(analysis_type, user_query, tres)
+            if existing_data_result is not None:
+                return existing_data_result
+            
+            ### create the TES message for the analysis
+            
+            self.tes_client.set_tes_messages(
+                query=user_query,
+                analysis_type=analysis_type,
+                task_name=task_name,
+                task_description=task_description,
                 output_format="json",
-                submit_message=f"Submitting {analysis_type} analysis to {len(self.analysis_orchestrator.tres)} TREs..."
             )
+            self.tes_client.set_tags(tres=self.analysis_orchestrator.tres)
+            five_Safes_TES_message = self.tes_client.create_FiveSAFES_TES_message()
+                    
 
-            # Process and analyze data (aggregation moved to this class)
-            print("Processing and analyzing data...")
-            raw_aggregated_data = self.data_processor.aggregate_data(data, analysis_type)
-            
-            analysis_result = self.statistical_analyzer.analyze_data(raw_aggregated_data, analysis_type)
-            
-            # Store the aggregated values in the centralized dict
-            self._store_aggregated_values(analysis_type)
-            
-            return {
-                'analysis_type': analysis_type,
-                'result': analysis_result,
-                'task_id': task_id,
-                'tres_used': tres,
-                'data_sources': len(data),
-                'complete_query': user_query
-            }
-            
-        except Exception as e:
-            print(f"Analysis failed: {str(e)}")
-            raise
+            # Submit task and collect results (common workflow)
+            try:
+                task_id, data = self.analysis_orchestrator._submit_and_collect_results(
+                    five_Safes_TES_message,
+                    bucket,
+                    output_format="json",
+                    submit_message=f"Submitting {analysis_type} analysis to {len(self.analysis_orchestrator.tres)} TREs..."
+                )
+
+                # Process and analyze data (aggregation moved to this class)
+                print("Processing and analyzing data...")
+                raw_aggregated_data = self.data_processor.aggregate_data(data, analysis_type)
+                
+                analysis_result = self.statistical_analyzer.analyze_data(raw_aggregated_data, analysis_type)
+                
+                # Store the aggregated values in the centralized dict
+                self._store_aggregated_values(analysis_type)
+                
+                return {
+                    'analysis_type': analysis_type,
+                    'result': analysis_result,
+                    'task_id': task_id,
+                    'tres_used': tres,
+                    'data_sources': len(data),
+                    'complete_query': user_query
+                }
+                
+            except Exception as e:
+                print(f"Analysis failed: {str(e)}")
+                raise
     
     def _store_aggregated_values(self, analysis_type: str):
         """
