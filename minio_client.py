@@ -69,7 +69,6 @@ class MinIOClient:
         data = {
             'Action': 'AssumeRoleWithWebIdentity',
             'Version': '2011-06-15',
-            'WebIdentityToken': self.token,
             'DurationSeconds': '3600'
         }
         
