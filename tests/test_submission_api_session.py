@@ -246,18 +246,32 @@ class TestSubmissionAPISessionIntegration:
             assert "access_key" in creds 
             assert "secret_key" in creds 
             assert "session_token" in creds
-            assert isinstance(session_token, str) 
-            assert session_token.count(".") == 2
-
-            payload_part = session_token.split(".")[1]
-            padded = payload_part + "=" * (-len(payload_part) % 4)
-            payload = json.loads(base64.urlsafe_b64decode(padded))
-
-            assert "exp" in payload
-            assert payload["exp"] > time.time()
+            
+            self.validate_jwt_token(session_token)
     
     @pytest.mark.integration 
-    def test_minio_credentials_refresh_after_token_expiry(self):
+    def test_minio_credentials_refresh_after_token_invalidation(self):
+        with SubmissionAPISession() as token_session: 
+            client = MinIOClient(token_session)
+
+            client._get_client()
+            minio_access_key_before = client._credentials["access_key"]
+            minio_secret_key_before = client._credentials["secret_key"]
+
+            client._client = None 
+            client.refresh_credentials()
+            token_session._access_token = 'invalid'
+
+            client._get_client()
+            minio_access_key_after = client._credentials["access_key"]
+            minio_secret_key_after = client._credentials["secret_key"]
+
+            assert minio_access_key_after != minio_access_key_before
+            assert minio_secret_key_after != minio_secret_key_before
+            self.validate_jwt_token(token_session.access_token)
+    
+    @pytest.mark.integration 
+    def test_minio_client_list_buckets_after_token_invalidation(self):
         """
         Important to test that the Minio Credentials are refreshed properly upon 
         token expiry - easiest way to do this is to manually corrupt the session token 
@@ -267,10 +281,23 @@ class TestSubmissionAPISessionIntegration:
             client = MinIOClient(token_session)
 
             buckets = client.list_buckets()
+            minio_access_key_before = client._credentials["access_key"]
+            minio_secret_key_before = client._credentials["secret_key"]
+            original_access = token_session.access_token
+
             assert isinstance(buckets, list)
 
-            client._credentials["session_token"] = "invalid"
+            client._client = None 
+            client.refresh_credentials()
             token_session._access_token = "invalid"
-
+            
             buckets = client.list_buckets()
+            minio_access_key_after = client._credentials["access_key"]
+            minio_secret_key_after = client._credentials["secret_key"]
+
             assert isinstance(buckets, list)
+            assert minio_access_key_after != minio_access_key_before
+            assert minio_secret_key_after != minio_secret_key_before
+            self.validate_jwt_token(token_session.access_token)
+            token_session.access_token != original_access 
+    

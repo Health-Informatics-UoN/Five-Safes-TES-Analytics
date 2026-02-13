@@ -24,8 +24,7 @@ class TokenExpiredError(Exception):
 class MinIOClient:
     """
     Handles MinIO operations including token exchange and object retrieval.
-    """
-    
+    """  
     def __init__(self, 
                  token_session: SubmissionAPISession = None, 
                  sts_endpoint: str = None,
@@ -84,18 +83,11 @@ class MinIOClient:
         )
         
         if response.status_code != 200:
-            print(f"STS Response Status: {response.status_code}")
-            print(f"STS Response Headers: {response.headers}")
-            print(f"STS Response Content: {response.text}")
-            
-            # Check for expired token
-            if response.status_code == 400:
-                error_content = response.text.lower()
-                if "expired" in error_content or "token expired" in error_content:
-                    raise TokenExpiredError("Token has expired")
-            
-            raise Exception(f"Failed to exchange token: {response.status_code} - {response.text}")
-        
+            raise Exception(
+                f"Failed to exchange token for MinIO credentials: "
+                f"{response.status_code} - {response.text}"
+            )
+    
         # Parse the STS response
         root = ET.fromstring(response.text)
         ns = {'sts': 'https://sts.amazonaws.com/doc/2011-06-15/'}

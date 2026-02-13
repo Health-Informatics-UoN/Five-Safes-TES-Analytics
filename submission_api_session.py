@@ -22,6 +22,18 @@ class SubmissionAPISession():
             response = session.request("GET", some_url)
             response.raise_for_status()
     """
+    TOKEN_ERROR_INDICATORS = (
+        'expired',
+        'token expired',
+        'invalid token',
+        'invalid number of segments',
+        'malformed',
+        'invalidparametervalue',
+        'unauthorized',
+        'invalid_token'
+    )
+    TOKEN_ERROR_STATUS_CODES = (400, 401)
+
     def __init__(
         self, 
         client_id: str = None,
@@ -119,7 +131,18 @@ class SubmissionAPISession():
 
         response = requests.request(method, url, **kwargs)
 
-        if response.status_code == 401:
+        is_token_error = False
+        if response.status_code in self.TOKEN_ERROR_STATUS_CODES:
+            if response.status_code == 401:
+                is_token_error = True
+            elif response.status_code == 400:
+                error_content = response.text.lower()
+                is_token_error = any(
+                    indicator in error_content 
+                    for indicator in self.TOKEN_ERROR_INDICATORS
+                )
+
+        if is_token_error:
             self._refresh()
             if token_in == "header":
                 headers[token_field] = f"Bearer {self.access_token}"
@@ -195,3 +218,6 @@ class SubmissionAPISession():
         )
         self._access_token = None
         self._refresh_token = None
+
+    def _is_token_error(): 
+        pass 
