@@ -8,7 +8,7 @@ from submission_api_session import SubmissionAPISession
 from minio_client import MinIOClient 
 
 class TestSubmissionAPISessionUnit(): 
-    def test_login_successful():
+    def test_login_successful(self):
         with patch("submission_api_session.requests") as mock_requests: 
             mock_response = Mock() 
             mock_response.json.return_value = {
@@ -33,7 +33,7 @@ class TestSubmissionAPISessionUnit():
             assert session.refresh_token == "xyz"
 
 
-    def test_refresh_replaces_tokens(): 
+    def test_refresh_replaces_tokens(self): 
         with patch("submission_api_session.requests") as mock_requests: 
             session = SubmissionAPISession(
                 client_id="fake_client", 
@@ -60,7 +60,7 @@ class TestSubmissionAPISessionUnit():
             assert session.refresh_token == "456"
 
 
-    def test_request_successful_on_200(): 
+    def test_request_successful_on_200(self): 
         with patch("submission_api_session.requests") as mock_requests: 
             session = SubmissionAPISession(
                 client_id="fake_client", 
@@ -101,7 +101,7 @@ class TestSubmissionAPISessionUnit():
             assert session.refresh_token == "xyz"
 
 
-    def test_request_retries_on_401(): 
+    def test_request_retries_on_401(self): 
         """
         To test that this retries on a 401 we need to: 
             - Check that self._refresh is called once and only once. 
@@ -152,7 +152,7 @@ class TestSubmissionAPISessionUnit():
             assert session.refresh_token == "456"
 
 
-    def test_logout_successful(): 
+    def test_logout_successful(self): 
         with patch("submission_api_session.requests") as _: 
             session = SubmissionAPISession(
                 client_id="fake_client", 
@@ -171,7 +171,7 @@ class TestSubmissionAPISessionUnit():
             assert session.refresh_token is None
 
 
-    def test_context_manager_calls_login_and_logout():
+    def test_context_manager_calls_login_and_logout(self):
         with patch.object(SubmissionAPISession, "_login") as login, \
             patch.object(SubmissionAPISession, "_logout") as logout:
 
@@ -187,13 +187,18 @@ class TestSubmissionAPISessionUnit():
 class TestSubmissionAPISessionIntegration: 
     """
     These tests are disabled by default as they require a deployed version of 5STES. 
+    If ran with: 
     
-    However, if ran they test the interaction of the SubmissionAPISession with an actual instance of a 5STES submission layer. 
+    poetry run pytest -s tests/test_submission_api_session.py -m integration
+
+    they test the interaction of the SubmissionAPISession with an actual instance of a 5STES submission layer. 
+    Make sure .env variables are correctly configured to point to a deployed version
+    of 5STES. 
     """
     @staticmethod
     def validate_jwt_token(session_token: str): 
         """
-        Helper function for integration testsvto validate a JWT token returned by submission API.
+        Helper function for integration tests to validate a JWT token returned by submission API.
 
         JWT payloads are base64url encoded without padding 
         Standard Base64 requires encoded string must be a multiple of 4 - otherwise it is padded with "="
@@ -212,10 +217,8 @@ class TestSubmissionAPISessionIntegration:
     @pytest.mark.integration
     def test_login_on_real_submission_api_endpoint(self): 
         with SubmissionAPISession() as session: 
-            assert isinstance(session.access_token, str) 
-            assert isinstance(session.refresh_token, str)
-            assert session.access_token.count(".") == 2
-            assert session.refresh_token.count(".") == 2
+            self.validate_jwt_token(session.access_token)
+            self.validate_jwt_token(session.refresh_token)
 
     @pytest.mark.integration 
     def test_refresh_on_real_submission_api_endpoint(self): 
@@ -228,10 +231,8 @@ class TestSubmissionAPISessionIntegration:
             access_token_post_refresh = session.access_token
             refresh_token_post_refresh = session.refresh_token 
 
-            assert isinstance(session.access_token, str) 
-            assert isinstance(session.refresh_token, str)
-            assert session.access_token.count(".") == 2
-            assert session.refresh_token.count(".") == 2
+            self.validate_jwt_token(session.access_token)
+            self.validate_jwt_token(session.refresh_token)
             assert access_token_before_refresh != access_token_post_refresh 
             assert refresh_token_before_refresh != refresh_token_post_refresh 
 

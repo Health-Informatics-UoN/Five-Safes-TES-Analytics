@@ -75,7 +75,7 @@ class SubmissionAPISession():
         The token is automatically injected either into the request headers
         or request body, depending on the `token_in` parameter.
 
-        If the request returns HTTP 401 (Unauthorized), the session will:
+        If the request returns HTTP 401 (Unauthorised), the session will:
             1. Attempt to refresh the access token.
             2. Retry the request once with the new token.
 
@@ -97,8 +97,12 @@ class SubmissionAPISession():
 
         **kwargs:
             Additional keyword arguments passed directly to `requests.request()`.
+
+        Returns 
+        -------
+        requests.Response:
+            The final HTTP response object. 
         """
-        
         kwargs = kwargs.copy()
         headers = dict(kwargs.pop("headers", {}))
         data = dict(kwargs.pop("data", {}))
