@@ -1,6 +1,6 @@
 import os
 import time
-import requests
+import urlparse
 import json
 from typing import Dict, List, Optional, Union, Any
 import minio
@@ -121,10 +121,29 @@ class MinIOClient:
                 access_key=self._credentials['access_key'],
                 secret_key=self._credentials['secret_key'],
                 session_token=self._credentials['session_token'],
-                secure=False
+                secure=False 
             )
         
         return self._client
+    
+    def _is_https(self):
+        """
+        Determine whether MinIO uses encrypted communication.
+        """
+        endpoint = os.environ.get("MINIO_ENDPOINT")
+        if not endpoint: 
+            raise ValueError("MINIO_ENDPOINT is not set")
+        
+        parsed = urlparse(endpoint)
+
+        if parsed.scheme == "https":
+            return True
+        elif parsed.scheme == "http":
+            return False
+        else:
+            raise ValueError(
+                "MINIO_ENDPOINT must start with http:// or https://"
+            )
     
     def refresh_credentials(self):
         """Force refresh of credentials."""
