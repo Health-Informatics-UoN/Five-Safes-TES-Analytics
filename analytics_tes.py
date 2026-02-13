@@ -55,7 +55,7 @@ class AnalyticsTES(tes_client.BaseTESClient):
         """
         Set the executors for a TES task.
         """
-        self._set_command(query, analysis_type, output_path, output_format)
+        self._set_command(query, output_path, output_format)
         self._set_env()
         self.executors = [tes.Executor(
             image=self.default_image,

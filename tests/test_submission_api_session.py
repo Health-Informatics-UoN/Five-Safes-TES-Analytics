@@ -273,9 +273,3 @@ class TestSubmissionAPISessionIntegration:
 
             buckets = client.list_buckets()
             assert isinstance(buckets, list)
-
-    @pytest.mark.integration 
-    def test_task_submission_upon_token_expiry_with_mean_analysis(self): 
-        with SubmissionAPISession() as session: 
-            pass 
-

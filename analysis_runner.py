@@ -62,8 +62,7 @@ class AnalysisRunner:
                 output_format="json",
             )
             self.tes_client.set_tags(tres=self.analysis_orchestrator.tres)
-            five_Safes_TES_message = self.tes_client.create_FiveSAFES_TES_message()
-                    
+            five_Safes_TES_message = self.tes_client.create_FiveSAFES_TES_message()                 
 
             # Submit task and collect results (common workflow)
             try:
