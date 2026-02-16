@@ -115,43 +115,10 @@ class SubmissionAPISession():
         requests.Response:
             The final HTTP response object. 
         """
-        kwargs = kwargs.copy()
-        headers = dict(kwargs.pop("headers", {}))
-        data = dict(kwargs.pop("data", {}))
-
-        if token_in == "header":
-            headers[token_field] = f"Bearer {self.access_token}"
-        elif token_in == "body":
-            data[token_field] = self.access_token
-        else:
-            raise ValueError(f"Unknown token_in value: {token_in}")
-
-        kwargs["headers"] = headers
-        kwargs["data"] = data
-
-        response = requests.request(method, url, **kwargs)
-
-        is_token_error = False
-        if response.status_code in self.TOKEN_ERROR_STATUS_CODES:
-            if response.status_code == 401:
-                is_token_error = True
-            elif response.status_code == 400:
-                error_content = response.text.lower()
-                is_token_error = any(
-                    indicator in error_content 
-                    for indicator in self.TOKEN_ERROR_INDICATORS
-                )
-
-        if is_token_error:
+        response = self._send(method, url, token_in, token_field, **kwargs)
+        if self._is_token_error(response):
             self._refresh()
-            if token_in == "header":
-                headers[token_field] = f"Bearer {self.access_token}"
-            else:
-                data[token_field] = self.access_token
-            kwargs["headers"] = headers
-            kwargs["data"] = data
-            response = requests.request(method, url, **kwargs)
-
+            response = self._send(method, url, token_in, token_field, **kwargs)
         return response
     
     def _validate_config(self): 
@@ -219,5 +186,31 @@ class SubmissionAPISession():
         self._access_token = None
         self._refresh_token = None
 
-    def _is_token_error(): 
-        pass 
+    def _send(self, method, url, token_in="header", token_field="Authorization", **kwargs): 
+        kwargs = kwargs.copy()
+        headers = dict(kwargs.pop("headers", {}))
+        data = dict(kwargs.pop("data", {}))
+
+        if token_in == "header":
+            headers[token_field] = f"Bearer {self.access_token}"
+        elif token_in == "body":
+            data[token_field] = self.access_token
+        else:
+            raise ValueError(f"Unknown token_in value: {token_in}")
+
+        kwargs["headers"] = headers
+        kwargs["data"] = data
+
+        return requests.request(method, url, **kwargs)
+
+    def _is_token_error(self, response: requests.Response): 
+        if response.status_code in self.TOKEN_ERROR_STATUS_CODES:
+            if response.status_code == 401:
+                return True
+            elif response.status_code == 400:
+                error_content = response.text.lower()
+                return any(
+                    indicator in error_content 
+                    for indicator in self.TOKEN_ERROR_INDICATORS
+                )
+        return False 

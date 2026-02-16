@@ -76,14 +76,6 @@ class TestSubmissionAPISessionUnit():
             mock_response = Mock(status_code=200)
             mock_requests.request.return_value = mock_response 
 
-            mock_refresh_response = Mock() 
-            mock_refresh_response.json.return_value = {
-                "access_token": "123", 
-                "refresh_token": "456"
-            }
-            mock_refresh_response.raise_for_status.return_value = None
-            mock_requests.post.return_value = mock_refresh_response
-
             headers = {
                 'accept': 'text/plain',
                 'Content-Type': 'application/json'
