@@ -100,57 +100,89 @@ def test_docker_build():
         os.chdir(original_cwd)
 
 def test_docker_run():
-    """Test Docker container run with sample data."""
+    """Test Docker container run with sample data.
+
+    Container uses postgres* env vars for DB connection (no --db-connection),
+    matching analytics_tes behaviour. Requires a reachable Postgres; skipped unless
+    RUN_DOCKER_POSTGRES_TESTS=1. Use postgres* env vars for credentials, or defaults
+    postgres/postgres@host.docker.internal:5432/postgres.
+    """
+    if os.environ.get("RUN_DOCKER_POSTGRES_TESTS") != "1":
+        pytest.skip("Set RUN_DOCKER_POSTGRES_TESTS=1 and have Postgres at host.docker.internal to run")
+
     print("Testing Docker container run...")
-    
+    user = os.environ.get("postgresUsername", "postgres")
+    password = os.environ.get("postgresPassword", "postgres")
+    server = os.environ.get("postgresServer", "host.docker.internal")
+    port = os.environ.get("postgresPort", "5432")
+    database = os.environ.get("postgresDatabase", "postgres")
+
     try:
-        # Test with mean analysis
         result = subprocess.run([
-            "docker", "run", "--rm", "tre-fx-local-processing",
+            "docker", "run", "--rm",
+            "-e", f"postgresUsername={user}",
+            "-e", f"postgresPassword={password}",
+            "-e", f"postgresServer={server}",
+            "-e", f"postgresPort={port}",
+            "-e", f"postgresDatabase={database}",
+            "tre-fx-local-processing",
             "--user-query", "SELECT 1 as value_as_number UNION SELECT 2 UNION SELECT 3",
             "--analysis", "mean",
-            "--db-connection", "sqlite:///:memory:",
             "--output-filename", "test_output",
             "--output-format", "json"
-        ], capture_output=True, text=True)
-        
+        ], capture_output=True, text=True, timeout=30)
+
         print("STDOUT:", result.stdout)
         if result.stderr:
             print("STDERR:", result.stderr)
-        
+
         assert result.returncode == 0, f"Docker run failed: {result.stderr}"
+    except subprocess.TimeoutExpired:
+        print("Timeout: Docker run took too long")
+        pytest.fail("Docker run timed out")
     except Exception as e:
         pytest.fail(f"Error running Docker container: {e}")
 
 def test_docker_with_postgres():
-    """Test Docker container with PostgreSQL database."""
+    """Test Docker container with PostgreSQL database.
+
+    Uses postgres* env vars (no --db-connection), matching analytics_tes.
+    Skipped unless RUN_DOCKER_POSTGRES_TESTS=1; credentials from env or defaults.
+    """
+    if os.environ.get("RUN_DOCKER_POSTGRES_TESTS") != "1":
+        pytest.skip("Set RUN_DOCKER_POSTGRES_TESTS=1 to run PostgreSQL Docker test")
+
     print("Testing Docker container with PostgreSQL...")
-    
-    # This would require a running PostgreSQL container
-    # For now, just test the command structure
+    user = os.environ.get("postgresUsername", "postgres")
+    password = os.environ.get("postgresPassword", "postgres")
+    server = os.environ.get("postgresServer", "host.docker.internal")
+    port = os.environ.get("postgresPort", "5432")
+    database = os.environ.get("postgresDatabase", "postgres")
+
     try:
         result = subprocess.run([
-            "docker", "run", "--rm", "tre-fx-local-processing",
+            "docker", "run", "--rm",
+            "-e", f"postgresUsername={user}",
+            "-e", f"postgresPassword={password}",
+            "-e", f"postgresServer={server}",
+            "-e", f"postgresPort={port}",
+            "-e", f"postgresDatabase={database}",
+            "tre-fx-local-processing",
             "--user-query", "SELECT COUNT(*) FROM information_schema.tables",
             "--analysis", "mean",
-            "--db-connection", "postgresql://postgres:postgres@host.docker.internal:5432/postgres",
             "--output-filename", "test_output",
             "--output-format", "json"
         ], capture_output=True, text=True, timeout=30)
-        
+
         print("STDOUT:", result.stdout)
         if result.stderr:
             print("STDERR:", result.stderr)
-        
-        # This might fail if PostgreSQL is not available, which is expected
+
         assert result.returncode == 0, f"PostgreSQL test failed: {result.stderr}"
     except subprocess.TimeoutExpired:
         print("Timeout: PostgreSQL connection test took too long")
-        # Consider it a success if timeout is reasonable (command structure is correct)
     except Exception as e:
         print(f"Error testing with PostgreSQL: {e}")
-        # Consider it a success if command structure is correct
-        pass
 
 def run_all_tests():
     """Run all tests."""

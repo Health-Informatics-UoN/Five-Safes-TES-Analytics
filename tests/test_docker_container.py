@@ -11,8 +11,8 @@ from sqlalchemy.engine import Engine
 # Add the parent directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Import the query_resolver module
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Container')))
+# Import the query_resolver module (docker package)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'docker')))
 import query_resolver
 import local_processing
 
@@ -271,10 +271,10 @@ class TestClickCLI:
                     result = json.load(f)
                 
                 # Should be a JSON string containing TDigest data
-                assert isinstance(result, str)
-                tdigest_data = json.loads(result)
-                assert "centroids" in tdigest_data
-                assert "n" in tdigest_data
+                assert isinstance(result, dict)
+                
+                assert "centroids" in result
+                assert "n" in result
                 
             finally:
                 # Clean up
@@ -503,7 +503,7 @@ class TestDockerBuildAndRun:
     
     def test_dockerfile_structure(self):
         """Test that Dockerfile has correct structure."""
-        dockerfile_path = os.path.join(os.path.dirname(__file__), '..', 'Container', 'Dockerfile')
+        dockerfile_path = os.path.join(os.path.dirname(__file__), '..', 'docker', 'Dockerfile')
         
         if os.path.exists(dockerfile_path):
             with open(dockerfile_path, 'r') as f:
@@ -519,7 +519,7 @@ class TestDockerBuildAndRun:
     
     def test_required_files_present(self):
         """Test that all required files are present for Docker build."""
-        container_dir = os.path.join(os.path.dirname(__file__), '..', 'Container')
+        container_dir = os.path.join(os.path.dirname(__file__), '..', 'docker')
         
         required_files = ['Dockerfile', 'query_resolver.py', 'local_processing.py']
         
@@ -529,7 +529,7 @@ class TestDockerBuildAndRun:
     
     def test_docker_dependencies(self):
         """Test that Docker container has correct dependencies."""
-        dockerfile_path = os.path.join(os.path.dirname(__file__), '..', 'Container', 'Dockerfile')
+        dockerfile_path = os.path.join(os.path.dirname(__file__), '..', 'docker', 'Dockerfile')
         
         if os.path.exists(dockerfile_path):
             with open(dockerfile_path, 'r') as f:
