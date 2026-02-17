@@ -37,6 +37,8 @@ class MetadataRunner:
         metadata_tes.set_tags(tres=self.analysis_orchestrator.tres)
         metadata_tes.create_FiveSAFES_TES_message()
 
+        if self.analysis_orchestrator.tres is None:
+            self.analysis_orchestrator.tres = tres
         try:
             task_id, data = self.analysis_orchestrator._submit_and_collect_results(
                 metadata_tes.task,

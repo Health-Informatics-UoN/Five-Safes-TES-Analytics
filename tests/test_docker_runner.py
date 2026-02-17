@@ -75,9 +75,9 @@ def test_docker_build():
     """Test Docker container build."""
     print("Testing Docker container build...")
     
-    container_dir = Path(__file__).parent.parent / "Container"
+    container_dir = Path(__file__).parent.parent / "docker"
     if not container_dir.exists():
-        pytest.fail(f"Container directory {container_dir} not found")
+        pytest.fail(f"Docker directory {container_dir} not found")
     
     try:
         # Change to container directory

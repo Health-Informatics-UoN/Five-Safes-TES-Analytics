@@ -25,10 +25,10 @@ class AnalyticsTES(tes_client.BaseTESClient):
         Set the environment variables for a TES task.
         """
         self.env = {
-            "DATASOURCE_DB_DATABASE": self.default_db_config['name'],
-            "DATASOURCE_DB_HOST": self.default_db_config['host'],
-            "DATASOURCE_DB_PASSWORD": self.default_db_config['password'],
-            "DATASOURCE_DB_USERNAME": self.default_db_config['username']
+            "postgresDatabase": self.default_db_config['name'],
+            "postgresServer": self.default_db_config['host'],
+            "postgresPassword": self.default_db_config['password'],
+            "postgresUsername": self.default_db_config['username']
         }
         return None
 

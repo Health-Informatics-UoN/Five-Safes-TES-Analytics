@@ -130,7 +130,10 @@ class AnalysisOrchestrator:
 
     def collect_results(self, task_id: str, bucket: str=None, output_format: str = "json"):
         if self.tres is None:
-            self.tres = self.parse_tres(os.getenv('5STES_TRES'))
+            tres = os.getenv('5STES_TRES')
+            if not tres:
+                raise ValueError("5STES_TRES environment variable is required when tres parameter is not provided")
+            self.tres = self.parse_tres(tres)
         if bucket is None:
             bucket = os.getenv('MINIO_OUTPUT_BUCKET')
             if not bucket:
