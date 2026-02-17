@@ -100,7 +100,6 @@ if __name__ == "__main__":
     #orchestrator = AnalysisOrchestrator(tes_client=BunnyTES())
     #metadata_runner = MetadataRunner(engine)
     metadata_runner = MetadataRunner()
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
 
     print("Running metadata analysis...")
     metadata_result = metadata_runner.get_metadata(

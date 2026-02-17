@@ -261,14 +261,14 @@ if __name__ == "__main__":
     analysis_runner = AnalysisRunner()
 
     ## need this to populate the query template
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
+    sql_schema = os.getenv("postgresSchema", "public")
     
     # Example: Run variance analysis first, then mean analysis on the same data
-    query_template = Template("""SELECT value_as_number FROM $schema.measurement 
+    query_template = Template("""SELECT value_as_number FROM $sql_schema.measurement 
 WHERE measurement_concept_id = 21490742
 AND value_as_number IS NOT NULL""")
     
-    user_query = query_template.safe_substitute(schema=sql_schema)
+    user_query = query_template.safe_substitute(sql_schema=sql_schema)
     
     print("Running mean analysis...")
     mean_result = analysis_runner.run_analysis(
