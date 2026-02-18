@@ -6,7 +6,7 @@ name: Publish a Dev Release
 
 on:
   push:
-    branches: [main] 
+    branches: [main, analytics_container_db_vars] 
 env:
   image-name: five-safes-tes-analytics-dev 
   repo-owner: ${{ github.repository_owner }}
