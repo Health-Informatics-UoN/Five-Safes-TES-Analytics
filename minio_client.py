@@ -119,7 +119,7 @@ class MinIOClient:
                 access_key=self._credentials['access_key'],
                 secret_key=self._credentials['secret_key'],
                 session_token=self._credentials['session_token'],
-                secure=False
+                secure=True
             )
         
         return self._client

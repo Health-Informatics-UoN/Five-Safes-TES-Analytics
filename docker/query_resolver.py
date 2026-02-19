@@ -17,9 +17,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 def validate_environment():
     """Validate environment variables for database connection."""
-    #required = {'postgresUsername': os.getenv('postgresUsername'), 'postgresPassword': os.getenv('postgresPassword'), 'postgresServer': os.getenv('postgresServer'), 'postgresDatabase': os.getenv('postgresDatabase')}
     required = ['postgresUsername', 'postgresPassword', 'postgresServer', 'postgresDatabase']
-    ## not sure if these are required, or should be: ['postgresPort', 'postgresSchema', submission_id]
     for required_var in required:
         if not os.getenv(required_var) or os.getenv(required_var) == '':
             raise ValueError(f"Missing required env var: {required_var}. Set it or pass --db-connection.")
@@ -42,7 +40,6 @@ def parse_connection_string(connection_string: str = None) -> str:
         Connection string in SQLAlchemy format: "postgresql://user:pass@host:port/db"
     """
     if connection_string is None:
-        connection_string = f"postgresql://{os.getenv('postgresUsername')}:{os.getenv('postgresPassword')}@{os.getenv('postgresServer')}:{os.getenv('postgresPort')}/{os.getenv('postgresDatabase')}"
         username = quote_plus(os.getenv('postgresUsername'))
         password = quote_plus(os.getenv('postgresPassword'))
         host = os.getenv('postgresServer')
@@ -244,7 +241,8 @@ def process_query(user_query, analysis, db_connection, output_filename, output_f
                        help='Output format (json or csv)')
 def main(user_query, analysis, db_connection, output_filename, output_format):
     """Click command wrapper for process_query."""
-    validate_environment()
+    if db_connection is None:
+        validate_environment()
     process_query(user_query, analysis, db_connection, output_filename, output_format)
 
 

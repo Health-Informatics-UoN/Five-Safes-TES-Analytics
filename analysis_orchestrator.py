@@ -128,7 +128,12 @@ class AnalysisOrchestrator:
         
         return task_id, data
 
-    def collect_results(self, task_id: str, bucket: str=None, output_format: str = "json"):
+    def collect_results(self, task_id: str, token: str = None, bucket: str=None, output_format: str = "json"):
+        if token is None:
+            token = os.getenv('5STES_TOKEN')
+            if not token:
+                raise ValueError("5STES_TOKEN environment variable is required when token parameter is not provided")
+        self.token = token
         if self.tres is None:
             tres = os.getenv('5STES_TRES')
             if not tres:

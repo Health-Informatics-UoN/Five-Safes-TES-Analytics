@@ -265,7 +265,7 @@ if __name__ == "__main__":
     
     # Example: Run variance analysis first, then mean analysis on the same data
     query_template = Template("""SELECT value_as_number FROM $sql_schema.measurement 
-WHERE measurement_concept_id = 21490742
+WHERE measurement_concept_id = 43055141
 AND value_as_number IS NOT NULL""")
     
     user_query = query_template.safe_substitute(sql_schema=sql_schema)

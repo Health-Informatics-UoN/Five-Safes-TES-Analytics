@@ -670,11 +670,8 @@ class TestMetadataRunner:
     def test_get_metadata_calls_tes_methods(self, metadata_runner):
         """Test that get_metadata calls the correct TES methods."""
         metadata_runner.analysis_orchestrator.setup_analysis = Mock(return_value=("metadata_task", None, "test-bucket", ['TRE1']))
-        #metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
         metadata_runner.analysis_orchestrator._submit_and_collect_results = Mock(return_value=("task-456", [{"data": "test"}]))
-        
-        #metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
-        #metadata_runner.analysis_orchestrator._submit_and_collect_results.return_value = ("task-456", [{"data": "test"}])
+
         
         # Call get_metadata
         metadata_runner.get_metadata(tres=['TRE1'])
@@ -687,7 +684,7 @@ class TestMetadataRunner:
     def test_get_metadata_stores_raw_data(self, metadata_runner):
         """Test that get_metadata stores raw data (placeholder - no aggregation yet)."""
         metadata_runner.analysis_orchestrator.setup_analysis = Mock(return_value=("metadata_task", None, "test-bucket", ['TRE1', 'TRE2']))
-        #metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
+
         
         # Mock data from two TREs
         mock_data = [
@@ -695,7 +692,7 @@ class TestMetadataRunner:
             {"count": 150, "mean": 30.2}
         ]
         metadata_runner.analysis_orchestrator._submit_and_collect_results = Mock(return_value=("task-789", mock_data))
-        #metadata_runner.analysis_orchestrator._submit_and_collect_results.return_value = ("task-789", mock_data)
+
         
         result = metadata_runner.get_metadata(tres=['TRE1', 'TRE2'])
         
@@ -710,9 +707,8 @@ class TestMetadataRunner:
     def test_get_metadata_error_handling(self, metadata_runner):
         """Test that get_metadata handles errors properly."""
         metadata_runner.analysis_orchestrator.setup_analysis = Mock(return_value=("metadata_task", None, "test-bucket", ['TRE1']))
-        #metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
         metadata_runner.analysis_orchestrator._submit_and_collect_results = Mock(side_effect=Exception("TES submission failed"))
-        #metadata_runner.analysis_orchestrator._submit_and_collect_results.side_effect = Exception("TES submission failed")
+
         
         # Should raise the exception
         with pytest.raises(Exception, match="TES submission failed"):
@@ -768,6 +764,12 @@ class TestMetadataRunnerTESIntegration:
         
         # Verify postgres* vars in executor (wrapper converts to DATASOURCE_DB_*)
         assert executor.env["postgresSchema"] == 'public'
+        assert executor.env["postgresDatabase"] == 'metadata_db'
+        assert "postgresDatabase" in executor.env
+        assert "postgresServer" in executor.env
+        assert "postgresPort" in executor.env
+        assert "postgresUsername" in executor.env
+        assert "postgresPassword" in executor.env
 
         # Verify tags for FiveSAFES
         assert task.tags is not None

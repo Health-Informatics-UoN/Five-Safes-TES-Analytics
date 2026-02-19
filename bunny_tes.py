@@ -56,13 +56,7 @@ class BunnyTES(tes_client.BaseTESClient):
             "postgresSchema": schema,
             "postgresUsername": db['username'],
             "postgresPassword": db['password'],
-            # DATASOURCE_DB_* (same values; entrypoint may overwrite from postgres*)
-            #"DATASOURCE_DB_DATABASE": db['name'],
-            #"DATASOURCE_DB_HOST": db['host'],
-            #"DATASOURCE_DB_PORT": port,
-            #"DATASOURCE_DB_SCHEMA": schema,
-            #"DATASOURCE_DB_USERNAME": db['username'],
-            #"DATASOURCE_DB_PASSWORD": db['password'],
+
             # Bunny / task API
             "TASK_API_BASE_URL": self.task_api_base_url,
             "TASK_API_USERNAME": self.task_api_username,
