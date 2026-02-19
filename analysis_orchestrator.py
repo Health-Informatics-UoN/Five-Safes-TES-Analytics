@@ -44,6 +44,9 @@ class AnalysisOrchestrator:
         self.project = project
         self.tes_client = tes_client
         self.minio_client = MinIOClient(token)
+
+        ## set to None here to be explicitly set later, either by passing args or environment variables
+        self.tres = None
         
     def parse_tres(self, tres: str) -> List[str]:
         """
@@ -116,6 +119,7 @@ class AnalysisOrchestrator:
         
         task_id = result['id']
         print(f"Task ID: {task_id}")
+        
         results_paths = [f"{int(task_id) + i + 1}/output.{output_format}" for i in range(n_results)]
         
         # Use polling engine to collect results
@@ -123,6 +127,25 @@ class AnalysisOrchestrator:
         data = polling_engine.poll_results(results_paths, bucket, n_results, polling_interval=10)
         
         return task_id, data
+
+    def collect_results(self, task_id: str, token: str = None, bucket: str=None, output_format: str = "json"):
+        if token is None:
+            token = os.getenv('5STES_TOKEN')
+            if not token:
+                raise ValueError("5STES_TOKEN environment variable is required when token parameter is not provided")
+        self.token = token
+        if self.tres is None:
+            tres = os.getenv('5STES_TRES')
+            if not tres:
+                raise ValueError("5STES_TRES environment variable is required when tres parameter is not provided")
+            self.tres = self.parse_tres(tres)
+        if bucket is None:
+            bucket = os.getenv('MINIO_OUTPUT_BUCKET')
+            if not bucket:
+                raise ValueError("MINIO_OUTPUT_BUCKET environment variable is required when bucket parameter is not provided")
+        n_results = len(self.tres)
+        results_paths = [f"{int(task_id) + i + 1}/output.{output_format}" for i in range(n_results)]
+        return self._collect_results(results_paths, bucket, n_results)
     
     def _collect_results(self, results_paths: List[str], bucket: str, n_results: int) -> List[str]:
         """

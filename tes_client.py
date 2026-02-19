@@ -275,24 +275,24 @@ class BaseTESClient(ABC):
         if not self.default_image:
             raise ValueError("TES_DOCKER_IMAGE environment variable is required")
         
-        default_db_port = default_db_port or os.getenv('DB_PORT')
+        default_db_port = default_db_port or os.getenv('postgresPort')
         #if not default_db_port:
         #    raise ValueError("DB_PORT environment variable is required")
         
         if default_db_config is None:
-            db_host = os.getenv('DB_HOST')
+            db_host = os.getenv('postgresServer')
         #    if not db_host:
         #        raise ValueError("DB_HOST environment variable is required")
             
-            db_username = os.getenv('DB_USERNAME')
+            db_username = os.getenv('postgresUsername')
         #    if not db_username:
         #        raise ValueError("DB_USERNAME environment variable is required")
             
-            db_password = os.getenv('DB_PASSWORD')
+            db_password = os.getenv('postgresPassword')
         #    if not db_password:
         #        raise ValueError("DB_PASSWORD environment variable is required")
             
-            db_name = os.getenv('DB_NAME')
+            db_name = os.getenv('postgresDatabase')
         #    if not db_name:
         #        raise ValueError("DB_NAME environment variable is required")
             
@@ -302,7 +302,7 @@ class BaseTESClient(ABC):
                 "password": db_password,
                 "name": db_name,
                 "port": default_db_port,
-                "schema": os.getenv('SQL_SCHEMA')
+                "schema": os.getenv('postgresSchema')
             }
         else:
             self.default_db_config = default_db_config

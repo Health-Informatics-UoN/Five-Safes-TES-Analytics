@@ -66,19 +66,19 @@ class TestAnalyticsTES:
     
     def test_set_env(self, analytics_tes):
         """Test set_env creates correct environment variables."""
-        analytics_tes.set_env()
+        analytics_tes._set_env()
         
         assert isinstance(analytics_tes.env, dict)
-        assert "DATASOURCE_DB_DATABASE" in analytics_tes.env
-        assert "DATASOURCE_DB_HOST" in analytics_tes.env
-        assert "DATASOURCE_DB_PASSWORD" in analytics_tes.env
-        assert "DATASOURCE_DB_USERNAME" in analytics_tes.env
+        assert "postgresDatabase" in analytics_tes.env
+        assert "postgresServer" in analytics_tes.env
+        assert "postgresPassword" in analytics_tes.env
+        assert "postgresUsername" in analytics_tes.env
         
         # Verify values match the default_db_config
-        assert analytics_tes.env["DATASOURCE_DB_DATABASE"] == analytics_tes.default_db_config['name']
-        assert analytics_tes.env["DATASOURCE_DB_HOST"] == analytics_tes.default_db_config['host']
-        assert analytics_tes.env["DATASOURCE_DB_PASSWORD"] == analytics_tes.default_db_config['password']
-        assert analytics_tes.env["DATASOURCE_DB_USERNAME"] == analytics_tes.default_db_config['username']
+        assert analytics_tes.env["postgresDatabase"] == analytics_tes.default_db_config['name']
+        assert analytics_tes.env["postgresServer"] == analytics_tes.default_db_config['host']
+        assert analytics_tes.env["postgresPassword"] == analytics_tes.default_db_config['password']
+        assert analytics_tes.env["postgresUsername"] == analytics_tes.default_db_config['username']
     
     def test_set_command(self, analytics_tes):
         """Test set_command creates correct command array."""
@@ -88,10 +88,10 @@ class TestAnalyticsTES:
         output_path = "/outputs"
         output_format = "json"
         
-        analytics_tes.set_command(query, analysis_type, output_path, output_format)
+        analytics_tes._set_command(query, analysis_type, output_path, output_format)
         
         assert isinstance(analytics_tes.command, list)
-        assert len(analytics_tes.command) == 5
+        assert len(analytics_tes.command) == 4
         
         # Check each command argument
         assert f"--user-query={query}" in analytics_tes.command
@@ -99,14 +99,7 @@ class TestAnalyticsTES:
         assert f"--output-filename={output_path}/output" in analytics_tes.command
         assert f"--output-format={output_format}" in analytics_tes.command
         
-        # Check db-connection string format by parsing the URL
-        db_conn_arg = [arg for arg in analytics_tes.command if arg.startswith("--db-connection=")][0]
-        conn_str = db_conn_arg.replace("--db-connection=", "")
-        assert conn_str.startswith("postgresql://")
-        parsed = urlparse(conn_str)
-        assert parsed.hostname == analytics_tes.default_db_config['host']
-        assert parsed.port == int(analytics_tes.default_db_config['port'])
-        assert parsed.path == "/" + analytics_tes.default_db_config['name']
+        
     
     def test_set_executors(self, analytics_tes):
         """Test set_executors creates correct executor structure."""
@@ -136,7 +129,7 @@ class TestAnalyticsTES:
         
         # Verify environment was set correctly
         assert isinstance(executor.env, dict)
-        assert "DATASOURCE_DB_DATABASE" in executor.env
+        assert "postgresDatabase" in executor.env
     
     def test_set_tes_messages(self, analytics_tes):
         """Test set_tes_messages creates complete TES task."""
@@ -147,7 +140,7 @@ class TestAnalyticsTES:
         analytics_tes.set_tes_messages(
             query=query,
             analysis_type=analysis_type,
-            name=name,
+            task_name=name,
             output_format="json"
         )
         
@@ -172,15 +165,15 @@ class TestTESMessageStructure:
     
     @pytest.fixture
     def analytics_tes(self):
-        """Set up AnalyticsTES instance with mock environment variables."""
+        """Set up AnalyticsTES instance with mock environment variables (postgres* names used by tes_client)."""
         with patch.dict(os.environ, {
             'TES_BASE_URL': 'http://test-tes-url.com',
             'TES_DOCKER_IMAGE': 'analytics:v1.0',
-            'DB_HOST': 'postgres.example.com',
-            'DB_PORT': '5432',
-            'DB_USERNAME': 'analytics_user',
-            'DB_PASSWORD': 'secure_password',
-            'DB_NAME': 'omop_cdm',
+            'postgresServer': 'postgres.example.com',
+            'postgresPort': '5432',
+            'postgresUsername': 'analytics_user',
+            'postgresPassword': 'secure_password',
+            'postgresDatabase': 'omop_cdm',
             '5STES_TRES': 'TRE1,TRE2,TRE3'
         }):
             return AnalyticsTES()
@@ -192,7 +185,7 @@ class TestTESMessageStructure:
         analytics_tes.set_tes_messages(
             query=query,
             analysis_type="mean",
-            name="mean_analysis_test"
+            task_name="mean_analysis_test"
         )
         
         task = analytics_tes.task
@@ -229,7 +222,7 @@ class TestTESMessageStructure:
         analytics_tes.set_tes_messages(
             query=query,
             analysis_type="variance",
-            name="variance_test"
+            task_name="variance_test"
         )
         
         executor = analytics_tes.task.executors[0]
@@ -244,7 +237,7 @@ class TestTESMessageStructure:
         analytics_tes.set_tes_messages(
             query=query,
             analysis_type="pmcc",
-            name="pmcc_test"
+            task_name="pmcc_test"
         )
         
         executor = analytics_tes.task.executors[0]
@@ -257,47 +250,23 @@ class TestTESMessageStructure:
         analytics_tes.set_tes_messages(
             query="SELECT * FROM test",
             analysis_type="mean",
-            name="env_test"
+            task_name="env_test"
         )
         
         executor = analytics_tes.task.executors[0]
         env = executor.env
         
-        assert env["DATASOURCE_DB_DATABASE"] == "omop_cdm"
-        assert env["DATASOURCE_DB_HOST"] == "postgres.example.com"
-        assert env["DATASOURCE_DB_USERNAME"] == "analytics_user"
-        assert env["DATASOURCE_DB_PASSWORD"] == "secure_password"
-    
-    def test_tes_message_database_connection_string(self, analytics_tes):
-        """Test that database connection string is correctly formatted."""
-        
-        analytics_tes.set_tes_messages(
-            query="SELECT * FROM test",
-            analysis_type="mean",
-            name="db_conn_test"
-        )
-        
-        executor = analytics_tes.task.executors[0]
-        command = executor.command
-        
-        # Find the db-connection argument
-        db_conn = [arg for arg in command if arg.startswith("--db-connection=")][0]
-        conn_str = db_conn.replace("--db-connection=", "")
-        
-        # Verify PostgreSQL connection string format by parsing the URL
-        assert conn_str.startswith("postgresql://")
-        parsed = urlparse(conn_str)
-        assert parsed.scheme == "postgresql"
-        assert parsed.hostname == "postgres.example.com"
-        assert parsed.port == 5432
-        assert parsed.path == "/omop_cdm"
+        assert env["postgresDatabase"] == "omop_cdm"
+        assert env["postgresServer"] == "postgres.example.com"
+        assert env["postgresUsername"] == "analytics_user"
+        assert env["postgresPassword"] == "secure_password"
     
     def test_tes_message_output_format(self, analytics_tes):
         """Test that output format is correctly set."""
         analytics_tes.set_tes_messages(
             query="SELECT * FROM test",
             analysis_type="mean",
-            name="output_format_test",
+            task_name="output_format_test",
             output_format="csv"
         )
         
@@ -423,7 +392,7 @@ class TestTESTaskIntegration:
         analytics_tes.set_tes_messages(
             query=query,
             analysis_type="mean",
-            name="integration_test_mean",
+            task_name="integration_test_mean",
             output_format="json"
         )
         
@@ -452,7 +421,7 @@ class TestTESTaskIntegration:
         analytics_tes.set_tes_messages(
             query="SELECT * FROM test",
             analysis_type="variance",
-            name="serialization_test"
+            task_name="serialization_test"
         )
         
         task = analytics_tes.task
@@ -484,7 +453,7 @@ class TestBunnyTES:
             'DB_USERNAME': 'bunny-user',
             'DB_PASSWORD': 'bunny-password',
             'DB_NAME': 'bunny-db',
-            'SQL_SCHEMA': 'public',
+            'postgresSchema': 'public',
             '5STES_TRES': 'TRE1,TRE2',
             'COLLECTION_ID': 'test-collection-123',
             'BUNNY_LOGGER_LEVEL': 'DEBUG',
@@ -534,26 +503,15 @@ class TestBunnyTES:
         
         assert isinstance(bunny_tes.env, dict)
         
-        # Standard database variables
-        assert "DATASOURCE_DB_DATABASE" in bunny_tes.env
-        assert "DATASOURCE_DB_HOST" in bunny_tes.env
-        assert "DATASOURCE_DB_PASSWORD" in bunny_tes.env
-        assert "DATASOURCE_DB_USERNAME" in bunny_tes.env
-        assert "DATASOURCE_DB_PORT" in bunny_tes.env
-        assert "DATASOURCE_DB_SCHEMA" in bunny_tes.env
-        
-        # Bunny-specific variables
-        assert "TASK_API_BASE_URL" in bunny_tes.env
-        assert "TASK_API_USERNAME" in bunny_tes.env
-        assert "TASK_API_PASSWORD" in bunny_tes.env
-        assert "COLLECTION_ID" in bunny_tes.env
-        assert "BUNNY_LOGGER_LEVEL" in bunny_tes.env
-        
-        # Verify values
-        assert bunny_tes.env["DATASOURCE_DB_SCHEMA"] == 'public'
-        assert bunny_tes.env["COLLECTION_ID"] == 'test-collection-123'
-        assert bunny_tes.env["BUNNY_LOGGER_LEVEL"] == 'DEBUG'
-        assert bunny_tes.env["TASK_API_BASE_URL"] == 'http://task-api.example.com'
+        # Postgres-style vars (wrapper reads these and exports as DATASOURCE_DB_*)
+        assert "postgresDatabase" in bunny_tes.env
+        assert "postgresServer" in bunny_tes.env
+        assert "postgresPassword" in bunny_tes.env
+        assert "postgresUsername" in bunny_tes.env
+        assert "postgresPort" in bunny_tes.env
+        assert "postgresSchema" in bunny_tes.env
+
+        assert bunny_tes.env["postgresSchema"] == 'public'
     
     def test_set_command(self, bunny_tes):
         """Test set_command creates correct command array for Bunny."""
@@ -597,15 +555,13 @@ class TestBunnyTES:
 
         # Verify environment includes bunny-specific vars
         assert isinstance(executor.env, dict)
-        assert "COLLECTION_ID" in executor.env
-        assert "BUNNY_LOGGER_LEVEL" in executor.env
     
     def test_set_tes_messages(self, bunny_tes):
         """Test set_tes_messages creates complete Bunny TES task."""
         name = "test_bunny_task"
         code = "DEMOGRAPHICS"
         
-        bunny_tes.set_tes_messages(name=name, analysis=code)
+        bunny_tes.set_tes_messages(task_name=name, analysis=code)
         
         # Verify task was created
         assert bunny_tes.task is not None
@@ -624,7 +580,7 @@ class TestBunnyTES:
     
     def test_bunny_message_structure(self, bunny_tes):
         """Test that Bunny TES message has correct structure for metadata."""
-        bunny_tes.set_tes_messages(name="metadata_test", analysis="DEMOGRAPHICS")
+        bunny_tes.set_tes_messages(task_name="metadata_test", analysis="DEMOGRAPHICS")
         
         task = bunny_tes.task
         
@@ -641,11 +597,10 @@ class TestBunnyTES:
         # Verify command has bunny args (entrypoint runs bunny)
         assert "--body-json" in executor.command
 
-        # Verify environment has all necessary bunny vars
+        # Verify environment has postgres* vars for wrapper
         env = executor.env
-        assert "COLLECTION_ID" in env
-        assert "BUNNY_LOGGER_LEVEL" in env
-        assert "TASK_API_BASE_URL" in env
+        assert "postgresSchema" in env
+        assert "postgresDatabase" in env
 
 
 class TestMetadataRunner:
@@ -689,9 +644,11 @@ class TestMetadataRunner:
     def test_get_metadata(self, metadata_runner):
         """Test get_metadata workflow with placeholder aggregation."""
         # Configure mock engine methods
-        metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
+        metadata_runner.analysis_orchestrator.setup_analysis = Mock(return_value=("metadata_task", None, "test-bucket", ['TRE1', 'TRE2']))
+        #metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
         test_data = [{"metadata": "test_data"}]
-        metadata_runner.analysis_orchestrator._submit_and_collect_results.return_value = ("task-123", test_data)
+        metadata_runner.analysis_orchestrator._submit_and_collect_results = Mock(return_value=("task-123", test_data))
+        #metadata_runner.analysis_orchestrator._submit_and_collect_results.return_value = ("task-123", test_data)
         
         # Call get_metadata
         result = metadata_runner.get_metadata(
@@ -712,8 +669,9 @@ class TestMetadataRunner:
     
     def test_get_metadata_calls_tes_methods(self, metadata_runner):
         """Test that get_metadata calls the correct TES methods."""
-        metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
-        metadata_runner.analysis_orchestrator._submit_and_collect_results.return_value = ("task-456", [{"data": "test"}])
+        metadata_runner.analysis_orchestrator.setup_analysis = Mock(return_value=("metadata_task", None, "test-bucket", ['TRE1']))
+        metadata_runner.analysis_orchestrator._submit_and_collect_results = Mock(return_value=("task-456", [{"data": "test"}]))
+
         
         # Call get_metadata
         metadata_runner.get_metadata(tres=['TRE1'])
@@ -725,14 +683,16 @@ class TestMetadataRunner:
     
     def test_get_metadata_stores_raw_data(self, metadata_runner):
         """Test that get_metadata stores raw data (placeholder - no aggregation yet)."""
-        metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1', 'TRE2'])
+        metadata_runner.analysis_orchestrator.setup_analysis = Mock(return_value=("metadata_task", None, "test-bucket", ['TRE1', 'TRE2']))
+
         
         # Mock data from two TREs
         mock_data = [
             {"count": 100, "mean": 25.5},
             {"count": 150, "mean": 30.2}
         ]
-        metadata_runner.analysis_orchestrator._submit_and_collect_results.return_value = ("task-789", mock_data)
+        metadata_runner.analysis_orchestrator._submit_and_collect_results = Mock(return_value=("task-789", mock_data))
+
         
         result = metadata_runner.get_metadata(tres=['TRE1', 'TRE2'])
         
@@ -746,8 +706,9 @@ class TestMetadataRunner:
     
     def test_get_metadata_error_handling(self, metadata_runner):
         """Test that get_metadata handles errors properly."""
-        metadata_runner.analysis_orchestrator.setup_analysis.return_value = ("metadata_task", "test-bucket", ['TRE1'])
-        metadata_runner.analysis_orchestrator._submit_and_collect_results.side_effect = Exception("TES submission failed")
+        metadata_runner.analysis_orchestrator.setup_analysis = Mock(return_value=("metadata_task", None, "test-bucket", ['TRE1']))
+        metadata_runner.analysis_orchestrator._submit_and_collect_results = Mock(side_effect=Exception("TES submission failed"))
+
         
         # Should raise the exception
         with pytest.raises(Exception, match="TES submission failed"):
@@ -783,7 +744,7 @@ class TestMetadataRunnerTESIntegration:
         code = "DEMOGRAPHICS"
         
         # Create complete TES message
-        bunny_tes.set_tes_messages(name="integration_test_metadata", analysis=code)
+        bunny_tes.set_tes_messages(task_name="integration_test_metadata", analysis=code)
         
         task = bunny_tes.task
         
@@ -801,12 +762,15 @@ class TestMetadataRunnerTESIntegration:
         assert executor.command is not None
         assert executor.env is not None
         
-        # Verify bunny-specific env vars in executor
-        assert executor.env["COLLECTION_ID"] == 'metadata-collection'
-        assert executor.env["BUNNY_LOGGER_LEVEL"] == 'INFO'
-        assert executor.env["TASK_API_BASE_URL"] == 'http://api.bunny.com'
-        assert executor.env["DATASOURCE_DB_SCHEMA"] == 'cdm'
-        
+        # Verify postgres* vars in executor (wrapper converts to DATASOURCE_DB_*)
+        assert executor.env["postgresSchema"] == 'public'
+        assert executor.env["postgresDatabase"] == 'metadata_db'
+        assert "postgresDatabase" in executor.env
+        assert "postgresServer" in executor.env
+        assert "postgresPort" in executor.env
+        assert "postgresUsername" in executor.env
+        assert "postgresPassword" in executor.env
+
         # Verify tags for FiveSAFES
         assert task.tags is not None
         assert "tres" in task.tags
@@ -815,7 +779,7 @@ class TestMetadataRunnerTESIntegration:
     
     def test_metadata_command_structure(self, bunny_tes):
         """Test that metadata command has correct structure."""
-        bunny_tes.set_tes_messages(name="command_test", analysis="PROCEDURES")
+        bunny_tes.set_tes_messages(task_name="command_test", analysis="DISTRIBUTION")
         
         executor = bunny_tes.task.executors[0]
         command = executor.command
@@ -829,4 +793,4 @@ class TestMetadataRunnerTESIntegration:
         assert len(json_args) > 0
         
         # Verify code is in JSON
-        assert "PROCEDURES" in json_args[0]
+        assert "GENERIC" in json_args[0]

@@ -29,18 +29,12 @@ All variables in `env.example` are **required**. Here's what you need to configu
 TES_BASE_URL=http://your-tes-endpoint:5034/v1/tasks
 TES_DOCKER_IMAGE=harbor.your-registry.com/your-image:tag
 
-# Database Configuration
-DB_HOST=your-database-host
-DB_PORT=5432
-DB_USERNAME=your-database-username
-DB_PASSWORD=your-database-password
-DB_NAME=your-database-name
-
 # MinIO Configuration
 MINIO_STS_ENDPOINT=http://your-minio-endpoint:9000/sts
 MINIO_ENDPOINT=your-minio-endpoint:9000
 MINIO_OUTPUT_BUCKET=your-output-bucket-name
 ```
+
 
 ### 3. Installation
 
@@ -66,13 +60,13 @@ import os
 analytics_tes = AnalyticsTES()
 orchestrator = AnalysisOrchestrator(tes_client=analytics_tes)
 analysis_runner = AnalysisRunner(tes_client=analytics_tes)
-sql_schema = os.getenv("SQL_SCHEMA", "public")
+sql_schema = os.getenv("postgresSchema", "public")
 
 
 
 # Define your own SQL query
 query_template = Template("""WITH user_query AS (
-  SELECT value_as_number FROM $schema.measurement 
+  SELECT value_as_number FROM $sql_schema.measurement 
   WHERE measurement_concept_id = 21490742
   AND value_as_number IS NOT NULL
 )

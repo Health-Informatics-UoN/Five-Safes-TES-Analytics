@@ -6,6 +6,7 @@ import json
 import click
 import sys
 import re
+import os
 from urllib.parse import quote_plus
 
 class DecimalEncoder(json.JSONEncoder):
@@ -14,8 +15,13 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         return super().default(obj)
 
-
-def parse_connection_string(connection_string: str) -> str:
+def validate_environment():
+    """Validate environment variables for database connection."""
+    required = ['postgresUsername', 'postgresPassword', 'postgresServer', 'postgresDatabase']
+    for required_var in required:
+        if not os.getenv(required_var) or os.getenv(required_var) == '':
+            raise ValueError(f"Missing required env var: {required_var}. Set it or pass --db-connection.")
+def parse_connection_string(connection_string: str = None) -> str:
     """
     Parse and convert a connection string to SQLAlchemy format.
     
@@ -33,6 +39,17 @@ def parse_connection_string(connection_string: str) -> str:
     Returns:
         Connection string in SQLAlchemy format: "postgresql://user:pass@host:port/db"
     """
+    if connection_string is None:
+        username = quote_plus(os.getenv('postgresUsername'))
+        password = quote_plus(os.getenv('postgresPassword'))
+        host = os.getenv('postgresServer')
+        port = os.getenv('postgresPort') or '5432'
+        database = os.getenv('postgresDatabase')
+        connection_string = f"postgresql://{username}:{password}@{host}:{port}/{database}"
+        
+        return connection_string
+    
+    ### this branch allows the user to override the connection string with a command line argument.
     # Strip command-line prefixes if present
     connection_string = connection_string.strip()
     if connection_string.startswith('--Connection='):
@@ -217,14 +234,18 @@ def process_query(user_query, analysis, db_connection, output_filename, output_f
 @click.command()
 @click.option('--user-query', required=True, help='SQL query to execute')
 @click.option('--analysis', required=True, help='Type of analysis to perform')
-@click.option('--db-connection', default="postgresql://postgres:postgres@localhost:5432/omop", 
-                       help='Database connection string')
-@click.option('--output-filename', help='Output filename', default='data')
+@click.option('--db-connection', default=None, 
+                       help='Database connection string. If not provided, will use environment variables.')
+@click.option('--output-filename', help='Output filename', default='output')
 @click.option('--output-format', type=click.Choice(['json', 'csv']), default='json',
                        help='Output format (json or csv)')
 def main(user_query, analysis, db_connection, output_filename, output_format):
     """Click command wrapper for process_query."""
+    if db_connection is None:
+        validate_environment()
     process_query(user_query, analysis, db_connection, output_filename, output_format)
+
+
 
 
 if __name__ == "__main__":
