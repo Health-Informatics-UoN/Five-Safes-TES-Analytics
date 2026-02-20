@@ -9,6 +9,9 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from enum import IntEnum
 
+from submission_api_session import SubmissionAPISession 
+
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -486,7 +489,7 @@ class BaseTESClient(ABC):
         
         return curl_command
     
-    def submit_task(self, template: Union[Dict[str, Any], tes.Task], token: str) -> Dict[str, Any]:
+    def submit_task(self, template: Union[Dict[str, Any], tes.Task], token_session: SubmissionAPISession) -> Dict[str, Any]:
         """
         Submit a TES task using the requests library.
         
@@ -507,13 +510,18 @@ class BaseTESClient(ABC):
         template["description"] = "test"
         headers = {
             'accept': 'text/plain',
-            'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json'
         }
         
         try:
             tasks_url = self._build_api_url(self.TES_url, "tasks")
-            response = requests.post(tasks_url, headers=headers, json=template)
+            
+            response = token_session.request(
+                method="POST", 
+                url=tasks_url, 
+                headers=headers, 
+                json=template
+            )
             
             # Debug: Print response details for 400 errors
             if response.status_code == 400:

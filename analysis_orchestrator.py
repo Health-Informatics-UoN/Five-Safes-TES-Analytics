@@ -1,16 +1,15 @@
-import json
 import time
 import os
 import tes
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
+
 from tes_client import BaseTESClient
-from tes_client import get_status_description
 from minio_client import MinIOClient
 import polling
-from string import Template
+from submission_api_session import SubmissionAPISession 
 
-# Load environment variables from .env file
+
 load_dotenv()
 
 class AnalysisOrchestrator:
@@ -20,7 +19,12 @@ class AnalysisOrchestrator:
     Analysis-specific logic is handled by the AnalysisRunner class.
     """
     
-    def __init__(self, tes_client: BaseTESClient, token: str = None, project: str = None):
+    def __init__(
+        self, 
+        tes_client: BaseTESClient, 
+        token_session: SubmissionAPISession, 
+        project: str = None
+    ):
         """
         Initialize the analysis orchestrator.
 
@@ -29,21 +33,15 @@ class AnalysisOrchestrator:
             token (str): Authentication token for TRE-FX services
             project (str): Project name for TES tasks (defaults to 5STES_PROJECT env var)
         """
-        if token is None:
-            token = os.getenv('5STES_TOKEN')
-            if not token:
-                raise ValueError("5STES_TOKEN environment variable is required when token parameter is not provided")
-        self.token = token
-        
-        # Set project from environment variable if not provided
         if project is None:
             project = os.getenv('5STES_PROJECT')
             if not project:
                 raise ValueError("5STES_PROJECT environment variable is required when project parameter is not provided")
-        
+            
+        self.token_session = token_session 
         self.project = project
         self.tes_client = tes_client
-        self.minio_client = MinIOClient(token)
+        self.minio_client = MinIOClient(token_session=token_session)
         
     def parse_tres(self, tres: str) -> List[str]:
         """
@@ -112,7 +110,7 @@ class AnalysisOrchestrator:
         else:
             print(f"Submitting task to {n_results} TREs...")
         
-        result = self.tes_client.submit_task(tes_message, self.token)
+        result = self.tes_client.submit_task(tes_message, token_session=self.token_session)
         
         task_id = result['id']
         print(f"Task ID: {task_id}")
