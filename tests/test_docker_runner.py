@@ -206,9 +206,9 @@ def run_all_tests():
         results[test_name] = success
         
         if success:
-            print(f"✅ {test_name} PASSED")
+            print(f"{test_name} PASSED")
         else:
-            print(f"❌ {test_name} FAILED")
+            print(f"{test_name} FAILED")
     
     print(f"\n{'='*50}")
     print("TEST SUMMARY")
@@ -218,7 +218,7 @@ def run_all_tests():
     total = len(results)
     
     for test_name, success in results.items():
-        status = "✅ PASSED" if success else "❌ FAILED"
+        status = "PASSED" if success else "FAILED"
         print(f"{test_name}: {status}")
     
     print(f"\nOverall: {passed}/{total} tests passed")
@@ -263,10 +263,10 @@ def main():
         success = run_all_tests()
     
     if success:
-        print("\n🎉 All tests passed!")
+        print("\n All tests passed!")
         sys.exit(0)
     else:
-        print("\n💥 Some tests failed!")
+        print("\n Some tests failed!")
         sys.exit(1)
 
 if __name__ == "__main__":
