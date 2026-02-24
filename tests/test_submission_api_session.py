@@ -23,8 +23,7 @@ class TestSubmissionAPISessionUnit():
                 client_secret="fake_secret", 
                 username="username", 
                 password="password", 
-                token_url="token_url", 
-                logout_url="logout_url"
+                base_keycloak_url="https://auth.com/realms/realm-name/"
             ) 
 
             session._login()
@@ -40,8 +39,7 @@ class TestSubmissionAPISessionUnit():
                 client_secret="fake_secret", 
                 username="username", 
                 password="password", 
-                token_url="token_url", 
-                logout_url="logout_url"
+                base_keycloak_url="https://auth.com/realms/realm-name/"
             ) 
             session._access_token = "abc"
             session._refresh_token = "xyz"
@@ -67,8 +65,7 @@ class TestSubmissionAPISessionUnit():
                 client_secret="fake_secret", 
                 username="username", 
                 password="password", 
-                token_url="token_url", 
-                logout_url="logout_url"
+                base_keycloak_url="https://auth.com/realms/realm-name/"
             ) 
             session._access_token = "abc"
             session._refresh_token = "xyz"
@@ -106,8 +103,7 @@ class TestSubmissionAPISessionUnit():
                 client_secret="fake_secret", 
                 username="username", 
                 password="password", 
-                token_url="token_url", 
-                logout_url="logout_url"
+                base_keycloak_url="https://auth.com/realms/realm-name/"
             ) 
             session._access_token = "abc"
             session._refresh_token = "xyz"
@@ -151,8 +147,7 @@ class TestSubmissionAPISessionUnit():
                 client_secret="fake_secret", 
                 username="username", 
                 password="password", 
-                token_url="token_url", 
-                logout_url="logout_url"
+                base_keycloak_url="https://auth.com/realms/realm-name/"
             ) 
             session._access_token = "abc"
             session._refresh_token = "xyz"
@@ -168,7 +163,7 @@ class TestSubmissionAPISessionUnit():
             patch.object(SubmissionAPISession, "_logout") as logout:
 
             with SubmissionAPISession(
-                "id", "secret", "user", "pass", "token", "logout"
+                "id", "secret", "user", "pass", "https://auth.com/realms/realm-name/"
             ):
                 pass
 

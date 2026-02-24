@@ -1,4 +1,5 @@
 import os 
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 import requests 
@@ -40,20 +41,53 @@ class SubmissionAPISession():
         client_secret: str = None, 
         username: str = None, 
         password: str = None, 
-        token_url: str = None, 
-        logout_url: str = None  
+        base_keycloak_url: str = None 
     ):
+        """
+        Initialise a SubmissionAPISession.
+
+        Parameters
+        ----------
+        client_id : str, optional
+            OAuth2 client ID issued by Keycloak. If not provided, the value is
+            loaded from the ``SubmissionAPIKeyCloakClientId`` environment variable.
+
+        client_secret : str, optional
+            OAuth2 client secret associated with the client ID. If omitted,
+            ``SubmissionAPIKeyCloakSecret`` from the environment is used.
+
+        username : str, optional
+            Username used for the password grant login flow. Defaults to the
+            ``SubmissionAPIKeyCloakUsername`` environment variable.
+
+        password : str, optional
+            Password used for the password grant login flow. Defaults to the
+            ``SubmissionAPIKeyCloakPassword`` environment variable.
+
+        base_keycloak_url : str, optional
+            Base URL of the Keycloak realm endpoint (for example:
+            ``https://auth.example.com/realms/myrealm``). If not supplied,
+            the value is read from ``SubmissionAPIBaseKeyCloakUrl``.
+
+        Raises
+        ------
+        ValueError
+            If any required configuration value is missing or if the
+            Keycloak base URL is not a valid URL.
+        """
         self.client_id = client_id or os.getenv("SubmissionAPIKeyCloakClientId")
         self.client_secret = client_secret or os.getenv("SubmissionAPIKeyCloakSecret")
         self.username = username or os.getenv("SubmissionAPIKeyCloakUsername")
         self.password = password or os.getenv("SubmissionAPIKeyCloakPassword")
-        self.token_url = token_url or os.getenv("SubmissionAPIKeyCloakTokenUrl")
-        self.logout_url = logout_url or os.getenv("SubmissionAPIKeyCloakLogoutUrl")
+        self.base_keycloak_url = base_keycloak_url or os.getenv("SubmissionAPIBaseKeyCloakUrl")
+
+        self._validate_input()
+
+        self.token_url = os.path.join(self.base_keycloak_url, "protocol", "openid-connect", "token")
+        self.logout_url = os.path.join(self.base_keycloak_url, "protocol", "openid-connect", "logout")
 
         self._access_token = None
         self._refresh_token = None
-
-        self._validate_config()
 
     def __enter__(self):
         self._login()
@@ -121,14 +155,13 @@ class SubmissionAPISession():
             response = self._send(method, url, token_in, token_field, **kwargs)
         return response
     
-    def _validate_config(self): 
+    def _validate_input(self): 
         required = {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
             "username": self.username,
             "password": self.password,
-            "token_url": self.token_url,
-            "logout_url": self.logout_url,
+            "base_keycloak_url": self.base_keycloak_url
         }
 
         missing = [k for k, v in required.items() if not v]
@@ -137,6 +170,11 @@ class SubmissionAPISession():
                 f"Missing required Submission API configuration: {', '.join(missing)}"
                 "Please make sure these are present in the .env file!"
             )
+        missing = [k for k, v in required.items() if not v]
+
+        parsed_base_url = urlparse(self.base_keycloak_url)
+        if not all([parsed_base_url.scheme, parsed_base_url.netloc]): 
+            raise ValueError("base_keycloak_url must be a valid URL!")
 
     def _login(self):
         payload = {
