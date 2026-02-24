@@ -4,10 +4,10 @@ import tes
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
 
-from clients.base_tes_client import BaseTESClient
-from clients.minio_client import MinIOClient
-from services import polling
-from services.submission_api_session import SubmissionAPISession 
+from five_safes_tes_analytics.clients.base_tes_client import BaseTESClient
+from five_safes_tes_analytics.clients.minio_client import MinIOClient
+from five_safes_tes_analytics.services import polling
+from five_safes_tes_analytics.services.submission_api_session import SubmissionAPISession 
 
 
 load_dotenv()

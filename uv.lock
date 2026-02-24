@@ -338,6 +338,50 @@ wheels = [
 ]
 
 [[package]]
+name = "five-safes-tes-analytics"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "click" },
+    { name = "minio" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "polars" },
+    { name = "py-tes" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "requests" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "sqlalchemy" },
+    { name = "tdigest" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-mock" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = ">=8.3.0,<9.0.0" },
+    { name = "minio", specifier = ">=7.0.0,<8.0.0" },
+    { name = "numpy", specifier = ">=2.2.6,<3.0.0" },
+    { name = "polars", specifier = ">=1.38.1,<2.0.0" },
+    { name = "py-tes", specifier = ">=1.1.2,<2.0.0" },
+    { name = "pydantic", specifier = ">=2.12.5,<3.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0,<9.0.0" },
+    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14.1,<4.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
+    { name = "requests", specifier = ">=2.32.4,<3.0.0" },
+    { name = "scipy", specifier = ">=1.15.3,<2.0.0" },
+    { name = "sqlalchemy", specifier = ">=2.0.44,<3.0.0" },
+    { name = "tdigest", specifier = ">=0.5.2.2,<0.6.0" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "greenlet"
 version = "3.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1460,50 +1504,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/9f/f1668c281c58cfae01482f7114a4b88d345e4c140386241a1a24dcc9e7bc/tomli-2.4.0-cp314-cp314t-win_arm64.whl", hash = "sha256:2b1e3b80e1d5e52e40e9b924ec43d81570f0e7d09d11081b797bc4692765a3d4", size = 99561 },
     { url = "https://files.pythonhosted.org/packages/23/d1/136eb2cb77520a31e1f64cbae9d33ec6df0d78bdf4160398e86eec8a8754/tomli-2.4.0-py3-none-any.whl", hash = "sha256:1f776e7d669ebceb01dee46484485f43a4048746235e683bcdffacdf1fb4785a", size = 14477 },
 ]
-
-[[package]]
-name = "tre-fx-federated-analysis"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "click" },
-    { name = "minio" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "polars" },
-    { name = "py-tes" },
-    { name = "pydantic" },
-    { name = "python-dotenv" },
-    { name = "requests" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "sqlalchemy" },
-    { name = "tdigest" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-mock" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "click", specifier = ">=8.3.0,<9.0.0" },
-    { name = "minio", specifier = ">=7.0.0,<8.0.0" },
-    { name = "numpy", specifier = ">=2.2.6,<3.0.0" },
-    { name = "polars", specifier = ">=1.38.1,<2.0.0" },
-    { name = "py-tes", specifier = ">=1.1.2,<2.0.0" },
-    { name = "pydantic", specifier = ">=2.12.5,<3.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0,<9.0.0" },
-    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14.1,<4.0.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
-    { name = "requests", specifier = ">=2.32.4,<3.0.0" },
-    { name = "scipy", specifier = ">=1.15.3,<2.0.0" },
-    { name = "sqlalchemy", specifier = ">=2.0.44,<3.0.0" },
-    { name = "tdigest", specifier = ">=0.5.2.2,<0.6.0" },
-]
-provides-extras = ["dev"]
 
 [[package]]
 name = "typing-extensions"

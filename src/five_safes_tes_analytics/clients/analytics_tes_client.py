@@ -1,6 +1,6 @@
 import tes
 
-from clients import base_tes_client 
+from five_safes_tes_analytics.clients import base_tes_client 
 
 
 class AnalyticsTES(base_tes_client.BaseTESClient):

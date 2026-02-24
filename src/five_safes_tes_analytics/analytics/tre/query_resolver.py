@@ -6,7 +6,7 @@ import sys
 import re
 from urllib.parse import quote_plus
 
-import local_processing
+from five_safes_tes_analytics.analytics.tre import local_processing
 
 
 class DecimalEncoder(json.JSONEncoder):

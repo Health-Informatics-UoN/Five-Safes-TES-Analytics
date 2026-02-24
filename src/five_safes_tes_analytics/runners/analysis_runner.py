@@ -3,12 +3,12 @@ import numpy as np
 import os
 from string import Template
 
-from clients.base_tes_client import BaseTESClient
-from clients.analytics_tes_client import AnalyticsTES
-from analytics.aggregation.data_processor import DataProcessor 
-from analytics.aggregation.statistical_analyzer import StatisticalAnalyzer
-from services.submission_api_session import SubmissionAPISession 
-from analysis_orchestrator import AnalysisOrchestrator
+from five_safes_tes_analytics.clients.base_tes_client import BaseTESClient
+from five_safes_tes_analytics.clients.analytics_tes_client import AnalyticsTES
+from five_safes_tes_analytics.analytics.aggregation.data_processor import DataProcessor 
+from five_safes_tes_analytics.analytics.aggregation.statistical_analyzer import StatisticalAnalyzer
+from five_safes_tes_analytics.services.submission_api_session import SubmissionAPISession 
+from five_safes_tes_analytics.runners.analysis_orchestrator import AnalysisOrchestrator
 
 
 class AnalysisRunner:

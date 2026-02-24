@@ -31,5 +31,8 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+packages = ["src/five_safes_tes_analytics"]
+
 [tool.uv] 
 package = true

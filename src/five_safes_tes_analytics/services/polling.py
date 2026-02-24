@@ -1,7 +1,7 @@
 import time
 from typing import List
 
-from clients.base_tes_client import get_status_description
+from five_safes_tes_analytics.clients.base_tes_client import get_status_description
 
 
 class Polling:

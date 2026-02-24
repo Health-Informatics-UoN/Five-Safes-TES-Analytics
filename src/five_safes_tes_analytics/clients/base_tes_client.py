@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from enum import IntEnum
 
-from services.submission_api_session import SubmissionAPISession 
+from five_safes_tes_analytics.services.submission_api_session import SubmissionAPISession 
 
 
 # Load environment variables from .env file

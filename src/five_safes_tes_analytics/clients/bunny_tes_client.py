@@ -1,7 +1,7 @@
 import tes
 import os
 
-from clients import base_tes_client
+from five_safes_tes_analytics.clients import base_tes_client
 
 
 class BunnyTES(base_tes_client.BaseTESClient):
