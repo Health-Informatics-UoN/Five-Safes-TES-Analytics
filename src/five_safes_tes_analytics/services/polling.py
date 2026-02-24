@@ -1,6 +1,8 @@
-from tes_client import get_status_description
 import time
-from typing import List, Optional, Tuple, Any
+from typing import List
+
+from clients.base_tes_client import get_status_description
+
 
 class Polling:
     def __init__(self, tes_client, minio_client, task_id: str):

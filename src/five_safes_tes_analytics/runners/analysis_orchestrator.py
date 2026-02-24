@@ -4,13 +4,14 @@ import tes
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
 
-from tes_client import BaseTESClient
-from minio_client import MinIOClient
-import polling
-from submission_api_session import SubmissionAPISession 
+from clients.base_tes_client import BaseTESClient
+from clients.minio_client import MinIOClient
+from services import polling
+from services.submission_api_session import SubmissionAPISession 
 
 
 load_dotenv()
+
 
 class AnalysisOrchestrator:
     """

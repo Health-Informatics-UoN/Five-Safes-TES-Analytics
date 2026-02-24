@@ -1,12 +1,14 @@
+"""
+These classes are for the aggregation of data, and the analysis of data, i.e., to be run on the aggregator, NOT the client.
+"""
 import numpy as np
-from scipy import stats
 from typing import Dict, Any, Union, List
 from abc import ABC, abstractmethod
 from tdigest import TDigest
 import json
+
 from data_processor import dict_to_array, combine_contingency_tables
 
-## These classes are for the aggregation of data, and the analysis of data, i.e., to be run on the aggregator, NOT the client.
 
 class AnalysisBase(ABC):
     """Abstract base class for statistical analysis."""

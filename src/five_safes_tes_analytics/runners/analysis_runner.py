@@ -1,13 +1,14 @@
-from analysis_orchestrator import AnalysisOrchestrator
 from typing import List, Dict, Any, Optional, Union
-from analytics_tes import AnalyticsTES
-from tes_client import BaseTESClient
-from data_processor import DataProcessor
-from statistical_analyzer import StatisticalAnalyzer
-from submission_api_session import SubmissionAPISession 
 import numpy as np
 import os
 from string import Template
+
+from clients.base_tes_client import BaseTESClient
+from clients.analytics_tes_client import AnalyticsTES
+from analytics.aggregation.data_processor import DataProcessor 
+from analytics.aggregation.statistical_analyzer import StatisticalAnalyzer
+from services.submission_api_session import SubmissionAPISession 
+from analysis_orchestrator import AnalysisOrchestrator
 
 
 class AnalysisRunner:

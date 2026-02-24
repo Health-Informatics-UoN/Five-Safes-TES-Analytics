@@ -1,9 +1,9 @@
-from abc import ABC, abstractmethod
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from tdigest import TDigest
 import math
-import json
+
 from local_processing_base import BaseLocalProcessing
+
 
 class Mean(BaseLocalProcessing):
     """

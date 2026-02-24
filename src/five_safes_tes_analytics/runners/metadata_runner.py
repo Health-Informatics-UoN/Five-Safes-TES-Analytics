@@ -1,10 +1,12 @@
-from analysis_orchestrator import AnalysisOrchestrator
-from typing import List, Dict, Any
-from bunny_tes import BunnyTES
-from tes_client import BaseTESClient
-from data_processor import DataProcessor
-from submission_api_session import SubmissionAPISession 
 import os
+from typing import List, Dict, Any
+
+from analysis_orchestrator import AnalysisOrchestrator
+from clients.bunny_tes_client import BunnyTES
+from clients.base_tes_client import BaseTESClient
+from analytics.aggregation.data_processor import DataProcessor
+from services.submission_api_session import SubmissionAPISession 
+
 
 class MetadataRunner:
     def __init__(self, tes_client: BaseTESClient = BunnyTES(), project: str = None):
