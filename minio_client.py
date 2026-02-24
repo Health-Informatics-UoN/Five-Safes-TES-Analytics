@@ -1,6 +1,6 @@
 import os
 import time
-import requests
+from urllib.parse import urlparse 
 import json
 from typing import Dict, List, Optional, Union, Any
 import minio
@@ -9,6 +9,9 @@ from minio import Minio
 import xml.etree.ElementTree as ET
 import csv
 from io import StringIO
+
+from submission_api_session import SubmissionAPISession
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,9 +24,9 @@ class TokenExpiredError(Exception):
 class MinIOClient:
     """
     Handles MinIO operations including token exchange and object retrieval.
-    """
-    
-    def __init__(self, token: str, 
+    """  
+    def __init__(self, 
+                 token_session: SubmissionAPISession = None, 
                  sts_endpoint: str = None,
                  minio_endpoint: str = None):
         """
@@ -34,7 +37,7 @@ class MinIOClient:
             sts_endpoint (str): STS endpoint URL
             minio_endpoint (str): MinIO endpoint URL
         """
-        self.token = token
+        self.token_session = token_session 
         # Use environment variables - required
         self.sts_endpoint = sts_endpoint or os.getenv('MINIO_STS_ENDPOINT')
         if not self.sts_endpoint:
@@ -59,33 +62,32 @@ class MinIOClient:
             Exception: If token exchange fails
         """
         headers = {
-            'Authorization': f'Bearer {self.token}',
             'Content-Type': 'application/x-www-form-urlencoded'
         }
         
         data = {
             'Action': 'AssumeRoleWithWebIdentity',
             'Version': '2011-06-15',
-            'WebIdentityToken': self.token,
             'DurationSeconds': '3600'
         }
         
         print("Exchanging token for credentials...")
-        response = requests.post(self.sts_endpoint, headers=headers, data=data)
+
+        response = self.token_session.request(
+            method="POST",
+            url=self.sts_endpoint, 
+            token_in="body",
+            token_field="WebIdentityToken",
+            headers=headers, 
+            data=data
+        )
         
         if response.status_code != 200:
-            print(f"STS Response Status: {response.status_code}")
-            print(f"STS Response Headers: {response.headers}")
-            print(f"STS Response Content: {response.text}")
-            
-            # Check for expired token
-            if response.status_code == 400:
-                error_content = response.text.lower()
-                if "expired" in error_content or "token expired" in error_content:
-                    raise TokenExpiredError("Token has expired")
-            
-            raise Exception(f"Failed to exchange token: {response.status_code} - {response.text}")
-        
+            raise Exception(
+                f"Failed to exchange token for MinIO credentials: "
+                f"{response.status_code} - {response.text}"
+            )
+    
         # Parse the STS response
         root = ET.fromstring(response.text)
         ns = {'sts': 'https://sts.amazonaws.com/doc/2011-06-15/'}
@@ -119,10 +121,29 @@ class MinIOClient:
                 access_key=self._credentials['access_key'],
                 secret_key=self._credentials['secret_key'],
                 session_token=self._credentials['session_token'],
-                secure=False
+                secure=self._is_https()
             )
         
         return self._client
+    
+    def _is_https(self):
+        """
+        Determine whether MinIO uses encrypted communication.
+        """
+        endpoint = os.environ.get("MINIO_STS_ENDPOINT")
+        if not endpoint: 
+            raise ValueError("MINIO_STS_ENDPOINT is not set")
+        
+        parsed = urlparse(endpoint)
+
+        if parsed.scheme == "https":
+            return True
+        elif parsed.scheme == "http":
+            return False
+        else:
+            raise ValueError(
+                "MINIO_STS_ENDPOINT must start with http:// or https://"
+            )
     
     def refresh_credentials(self):
         """Force refresh of credentials."""

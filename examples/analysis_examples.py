@@ -1,4 +1,14 @@
-# Example usage functions for common scenarios
+"""
+Example usage functions for common scenarios. 
+"""
+import os 
+from string import Template 
+from typing import List, Dict, Any 
+
+from analytics_tes import AnalyticsTES
+from analysis_runner import AnalysisRunner 
+
+
 def run_mean_analysis_example(analysis_runner: AnalysisRunner, concept_id: int, tres: List[str] = None) -> Dict[str, Any]:
     """
     Example function showing how to run a mean analysis.
@@ -16,7 +26,12 @@ def run_mean_analysis_example(analysis_runner: AnalysisRunner, concept_id: int, 
 WHERE measurement_concept_id = $concept_id
 AND value_as_number IS NOT NULL""")
     user_query = query_template.safe_substitute(schema=sql_schema, concept_id=concept_id)
-    return analysis_runner.run_analysis("mean", user_query=user_query, tres=tres)
+    return analysis_runner.run_analysis(
+        analysis_type="mean",
+        task_name="DEMO: mean analysis test",
+        user_query=user_query, 
+        tres=tres
+    )
 
 
 def run_variance_analysis_example(analysis_runner: AnalysisRunner, concept_id: int, tres: List[str] = None) -> Dict[str, Any]:
@@ -98,3 +113,13 @@ WHERE p.race_concept_id IN (38003574, 38003584)""")
     
     user_query = query_template.safe_substitute(schema=sql_schema)
     return analysis_runner.run_analysis("chi_squared_scipy", user_query=user_query, tres=tres)
+
+
+if __name__ == "__main__": 
+    tes_client = AnalyticsTES()
+    runner = AnalysisRunner(tes_client=tes_client)
+    
+    run_mean_analysis_example(
+        analysis_runner=runner, 
+        concept_id="43055141",
+    )
