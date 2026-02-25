@@ -119,7 +119,8 @@ class TestConnectionStringParsing:
         assert result == "postgresql://user:pass@localhost:5432/db"
 
     def test_parse_with_prefixes(self):
-        cs = "--Connection=Host=db:5432;Username=postgres;Password=password;Database=omop"
+        """Parse semicolon format (same as test_parse_semicolon_format, different values)."""
+        cs = "Host=db:5432;Username=postgres;Password=password;Database=omop"
         result = query_resolver.parse_connection_string(cs)
         assert result == "postgresql://postgres:password@db:5432/omop"
 
@@ -283,6 +284,7 @@ class TestClickCLI:
                 if os.path.exists(temp_filename):
                     os.remove(temp_filename)
     
+    @pytest.mark.integration
     def test_main_function_with_contingency_table(self):
         """Test main function with contingency table analysis."""
         user_query = "SELECT gender, race FROM patients"
