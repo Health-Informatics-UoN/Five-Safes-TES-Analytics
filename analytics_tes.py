@@ -25,10 +25,10 @@ class AnalyticsTES(tes_client.BaseTESClient):
         Set the environment variables for a TES task.
         """
         self.env = {
-            "DATASOURCE_DB_DATABASE": self.default_db_config['name'],
-            "DATASOURCE_DB_HOST": self.default_db_config['host'],
-            "DATASOURCE_DB_PASSWORD": self.default_db_config['password'],
-            "DATASOURCE_DB_USERNAME": self.default_db_config['username']
+            "postgresDatabase": self.default_db_config['name'],
+            "postgresServer": self.default_db_config['host'],
+            "postgresPassword": self.default_db_config['password'],
+            "postgresUsername": self.default_db_config['username']
         }
         return None
 
@@ -37,14 +37,16 @@ class AnalyticsTES(tes_client.BaseTESClient):
         Set the command for a TES task.
         """
 
-        connection_string = f"postgresql://postgres:{self.default_db_config['password']}@{self.default_db_config['host']}:{self.default_db_config['port']}/{self.default_db_config['name']}"
+        
         self.command = [
             f"--user-query={query}",
             f"--analysis={analysis_type}",
-            f"--db-connection={connection_string}",
             f"--output-filename={output_path}/output",
             f"--output-format={output_format}"
         ]
+        ## add this one if you want to override the injected connection vars with a command line argument.
+        # connection_string = f"postgresql://postgres:{self.default_db_config['password']}@{self.default_db_config['host']}:{self.default_db_config['port']}/{self.default_db_config['name']}"
+        #f"--db-connection={connection_string}",
         return None
 
     def set_executors(self, query, analysis_type, workdir = "/app", output_path="/outputs", output_format="json") -> None:

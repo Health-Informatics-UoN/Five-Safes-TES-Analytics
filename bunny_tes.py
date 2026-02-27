@@ -19,9 +19,9 @@ class BunnyTES(tes_client.BaseTESClient):
         self.task_api_username = os.getenv('TASK_API_USERNAME')
         self.task_api_password = os.getenv('TASK_API_PASSWORD')
         
-        # Add schema to default_db_config if not already present
-        if 'schema' not in self.default_db_config:
-            self.default_db_config['schema'] = os.getenv('SQL_SCHEMA')  # None if not set - will fail naturally if needed
+        # Schema: use postgresSchema throughout; entrypoint passes it to bunny as DATASOURCE_DB_SCHEMA
+        if not self.default_db_config.get('schema'):
+            self.default_db_config['schema'] = os.getenv('postgresSchema')
 
    #### this section will be implemented for each type of task using the pytes classes. Note that many of these fields are set in the submission layer after submission.
     def set_inputs(self) -> None:
@@ -43,14 +43,21 @@ class BunnyTES(tes_client.BaseTESClient):
     def _set_env(self) -> None:
         """
         Set the environment variables for a TES task.
+        Container entrypoint reads postgres* and exports DATASOURCE_DB_* for bunny; we set both.
         """
+        db = self.default_db_config
+        schema = db.get('schema') or 'public'
+        port = str(db.get('port') or '5432')
         self.env = {
-            "DATASOURCE_DB_DATABASE": self.default_db_config['name'],
-            "DATASOURCE_DB_HOST": self.default_db_config['host'],
-            "DATASOURCE_DB_PASSWORD": self.default_db_config['password'],
-            "DATASOURCE_DB_USERNAME": self.default_db_config['username'],
-            "DATASOURCE_DB_PORT": self.default_db_config['port'],
-            "DATASOURCE_DB_SCHEMA": self.default_db_config['schema'],
+            # Names the bunny-wrapper entrypoint reads (postgres* → DATASOURCE_DB_*)
+            "postgresDatabase": db['name'],
+            "postgresServer": db['host'],
+            "postgresPort": port,
+            "postgresSchema": schema,
+            "postgresUsername": db['username'],
+            "postgresPassword": db['password'],
+
+            # Bunny / task API
             "TASK_API_BASE_URL": self.task_api_base_url,
             "TASK_API_USERNAME": self.task_api_username,
             "TASK_API_PASSWORD": self.task_api_password,
