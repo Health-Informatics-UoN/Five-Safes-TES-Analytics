@@ -4,6 +4,7 @@ import json
 import click
 import sys
 import re
+import os
 from urllib.parse import quote_plus
 
 from five_safes_tes_analytics.analytics.tre import local_processing
@@ -15,8 +16,13 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         return super().default(obj)
 
-
-def parse_connection_string(connection_string: str) -> str:
+def validate_environment():
+    """Validate environment variables for database connection."""
+    required = ['postgresUsername', 'postgresPassword', 'postgresServer', 'postgresDatabase']
+    for required_var in required:
+        if not os.getenv(required_var) or os.getenv(required_var) == '':
+            raise ValueError(f"Missing required env var: {required_var}. Set it or pass --db-connection.")
+def parse_connection_string(connection_string: str = None) -> str:
     """
     Parse and convert a connection string to SQLAlchemy format.
     
@@ -24,28 +30,41 @@ def parse_connection_string(connection_string: str) -> str:
     1. Semicolon-separated: "Host=host:port;Username=user;Password=pass;Database=db"
     2. Already in SQLAlchemy format: "postgresql://user:pass@host:port/db"
     
-    Also handles connection strings with command-line prefixes:
-    - "--Connection=Host=...;Username=...;..."
-    - "--db-connection=postgresql://..."
-    
     Args:
         connection_string: Connection string in either format
         
     Returns:
         Connection string in SQLAlchemy format: "postgresql://user:pass@host:port/db"
     """
-    # Strip command-line prefixes if present
-    connection_string = connection_string.strip()
-    if connection_string.startswith('--Connection='):
-        connection_string = connection_string[13:]  # Remove "--Connection="
-    elif connection_string.startswith('--db-connection='):
-        connection_string = connection_string[17:]  # Remove "--db-connection="
+    if connection_string is None:
+        username = quote_plus(os.getenv('postgresUsername'))
+        password = quote_plus(os.getenv('postgresPassword'))
+        host = os.getenv('postgresServer')
+        port = os.getenv('postgresPort') or '5432'
+        database = os.getenv('postgresDatabase')
+        connection_string = f"postgresql://{username}:{password}@{host}:{port}/{database}"
+        
+        return connection_string
     
+    # Override from command line: value is passed by Click without the option name.
+    connection_string = connection_string.strip()
     # If already in SQLAlchemy format (starts with a database URI scheme), return as-is
     if re.match(r'^[a-zA-Z][a-zA-Z0-9+.-]*://', connection_string):
         return connection_string
+    else:
+        return parse_semicolon_format_connection_string(connection_string)
     
-    # Parse semicolon-separated format: Host=host:port;Username=user;Password=pass;Database=db
+def parse_semicolon_format_connection_string(connection_string: str) -> str:
+    """
+    Parse semicolon-separated (.NET style) format connection string: Host=host:port;Username=user;Password=pass;Database=db
+    and return a SQLAlchemy connection string.
+    Args:
+        connection_string: Connection string in semicolon-separated format
+        
+    Returns:
+        Connection string in SQLAlchemy format: "postgresql://user:pass@host:port/db"
+    """
+    
     params = {}
     parts = connection_string.split(';')
     
@@ -80,7 +99,10 @@ def parse_connection_string(connection_string: str) -> str:
     
     # Validate required parameters
     required = ['host', 'username', 'password', 'database']
-    missing = [p for p in required if p not in params]
+    for param in required:
+        if param not in params:
+            raise ValueError(f"Missing required connection parameter: {param}")
+    missing = [p for p in required if not params.get(p)]
     if missing:
         raise ValueError(f"Missing required connection parameters: {', '.join(missing)}")
     
@@ -98,33 +120,20 @@ def parse_connection_string(connection_string: str) -> str:
     
     return sqlalchemy_string
 
-
-### These classes are to run on the node, to make SQL queries and perform the partial analysis to be aggregated later.
-
-### The user query and analysis type are passed in as args.
-### Analysis type is looked up in the LOCAL_PROCESSING_CLASSES registry.
-### Each analysis class handles its own SQL query building and Python analysis.
-### Results are returned as JSON for aggregation on the client side.
-
-
-#################################################################################
-#### input args from user
-# Your original query - just execute it directly
-#user_query = """
-#SELECT value_as_number FROM public.measurement 
-#WHERE measurement_concept_id = 21490742
-#AND value_as_number IS NOT NULL
-#"""
-
-#analysis = 'mean'
-
-#################################################################################
-### Using dedicated classes for local processing and aggregation.
-### Each analysis type has its own processing class that handles SQL and Python analysis.
-
 def process_query(user_query, analysis, db_connection, output_filename, output_format):
-    """Internal function to process queries without Click decorators."""
-    #################################################################################
+    """Run the given analysis (SQL + optional Python) against the DB and write results to file.
+
+    Args:
+        user_query: SQL query or user selection (used by the analysis processor to build the final query).
+        analysis: Analysis type (e.g. 'mean', 'variance'); must exist in LOCAL_PROCESSING_CLASSES.
+        db_connection: Database connection string (SQLAlchemy URL, semicolon format, or None to use env vars).
+        output_filename: Base name for the output file (extension added from output_format).
+        output_format: Output format ('json' or 'csv').
+
+    Returns:
+        None. Writes result to disk. Exits with code 1 on error.
+    """
+    
     #### Setup
     try:    
         output_filename = output_filename + '.' + output_format
@@ -149,13 +158,7 @@ def process_query(user_query, analysis, db_connection, output_filename, output_f
         with sql_engine.connect() as conn:
             db_result = conn.execute(text(query))
             ## deliberately not fetching the data, so we can do python analysis on it in case it is huge.
-            ##db_result_data = db_result.fetchall()
-
-
-        ## sample output might be:  
-        ## [(5.2,), (7.8,), (4.1,)] ## from a single column.
-        ## test_output = [(5.2,), (7.8,), (4.1,)]
-        ## test_output = [(Decimal('65'),), (Decimal('52'),), (None,)]
+            
 
 
         ### check if we need to do any python analysis
@@ -208,8 +211,6 @@ def process_query(user_query, analysis, db_connection, output_filename, output_f
         #print(csv_str)
 
 
-        #################################################################################
-        ### How is the result handled?
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
@@ -218,14 +219,18 @@ def process_query(user_query, analysis, db_connection, output_filename, output_f
 @click.command()
 @click.option('--user-query', required=True, help='SQL query to execute')
 @click.option('--analysis', required=True, help='Type of analysis to perform')
-@click.option('--db-connection', default="postgresql://postgres:postgres@localhost:5432/omop", 
-                       help='Database connection string')
-@click.option('--output-filename', help='Output filename', default='data')
+@click.option('--db-connection', default=None, 
+                       help='Database connection string. If not provided, will use environment variables.')
+@click.option('--output-filename', help='Output filename', default='output')
 @click.option('--output-format', type=click.Choice(['json', 'csv']), default='json',
                        help='Output format (json or csv)')
 def main(user_query, analysis, db_connection, output_filename, output_format):
     """Click command wrapper for process_query."""
+    if db_connection is None:
+        validate_environment()
     process_query(user_query, analysis, db_connection, output_filename, output_format)
+
+
 
 
 if __name__ == "__main__":

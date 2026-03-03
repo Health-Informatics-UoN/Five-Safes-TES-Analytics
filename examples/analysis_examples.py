@@ -46,7 +46,7 @@ def run_variance_analysis_example(analysis_runner: AnalysisRunner, concept_id: i
     Returns:
         Dict[str, Any]: Analysis results
     """
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
+    sql_schema = os.getenv("postgresSchema", "public")
     query_template = Template("""SELECT value_as_number FROM $schema.measurement 
 WHERE measurement_concept_id = $concept_id
 AND value_as_number IS NOT NULL""")
@@ -67,7 +67,7 @@ def run_pmcc_analysis_example(analysis_runner: AnalysisRunner, x_concept_id: int
     Returns:
         Dict[str, Any]: Analysis results
     """
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
+    sql_schema = os.getenv("postgresSchema", "public")
     query_template = Template("""WITH x_values AS (
   SELECT person_id, measurement_date, value_as_number AS x
   FROM $schema.measurement
@@ -102,7 +102,7 @@ def run_chi_squared_analysis_example(analysis_runner: AnalysisRunner, tres: List
     Returns:
         Dict[str, Any]: Analysis results
     """
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
+    sql_schema = os.getenv("postgresSchema", "public")
     query_template = Template("""SELECT 
   g.concept_name AS gender_name,
   r.concept_name AS race_name
