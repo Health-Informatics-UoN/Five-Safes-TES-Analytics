@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 from five_safes_tes_analytics.runners.analysis_orchestrator import AnalysisOrchestrator
 from five_safes_tes_analytics.clients.bunny_tes_client import BunnyTES
 from five_safes_tes_analytics.clients.base_tes_client import BaseTESClient
-from five_safes_tes_analytics.analytics.aggregation.data_processor import DataProcessor
+from five_safes_tes_analytics.aggregation.data_processor import DataProcessor
 from five_safes_tes_analytics.services.submission_api_session import SubmissionAPISession 
 
 

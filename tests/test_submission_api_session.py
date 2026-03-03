@@ -4,8 +4,9 @@ import time
 from unittest.mock import patch, Mock 
 import pytest 
 
-from submission_api_session import SubmissionAPISession 
-from minio_client import MinIOClient 
+from five_safes_tes_analytics.services.submission_api_session import SubmissionAPISession 
+from five_safes_tes_analytics.clients.minio_client import MinIOClient 
+
 
 class TestSubmissionAPISessionUnit(): 
     def test_login_successful(self):

@@ -1,15 +1,8 @@
 import pytest
-import polling
-
-from tes_client import BaseTESClient, get_status_description
-from minio_client import MinIOClient
-
-
-
+from five_safes_tes_analytics.services import polling
 
 
 ## [11, 27, 16, 49] are the end statuses
-
 @pytest.mark.parametrize("status_code,expected_description", [
     (11, "Completed"),
     (27, "Failed"),

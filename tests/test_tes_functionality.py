@@ -6,18 +6,17 @@ Tests the TES message creation, data validation, and client operations.
 
 import pytest
 import os
-import json
-from unittest.mock import Mock, patch, MagicMock
+
+from unittest.mock import Mock, patch
 import sys
 from urllib.parse import urlparse
 
 # Add the current directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from analytics_tes import AnalyticsTES
-from bunny_tes import BunnyTES
-from metadata_runner import MetadataRunner
-from tes_client import BaseTESClient
+from five_safes_tes_analytics.clients.analytics_tes import AnalyticsTES
+from five_safes_tes_analytics.clients.bunny_tes import BunnyTES
+from five_safes_tes_analytics.runners.metadata_runner import MetadataRunner
 import tes
 
 

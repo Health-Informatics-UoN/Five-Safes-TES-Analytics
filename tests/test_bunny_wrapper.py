@@ -8,7 +8,7 @@ wrapper expects, and (2) the entrypoint script has the expected shape.
 import os
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -17,7 +17,6 @@ pytest.importorskip("tes")
 # Add project root for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import tes
 from bunny_tes import BunnyTES
 
 
