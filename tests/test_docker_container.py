@@ -2,7 +2,6 @@ import pytest
 import json
 import tempfile
 import os
-
 import sys
 from unittest.mock import Mock, patch
 

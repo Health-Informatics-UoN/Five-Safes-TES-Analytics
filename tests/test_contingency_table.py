@@ -1,13 +1,13 @@
 import pytest
 import numpy as np
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 import sys
 import os
 
 # Add the parent directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from statistical_analyzer import ContingencyTableAnalysis
+from five_safes_tes_analytics.aggregation.statistical_analyzer import ContingencyTableAnalysis
 
 
 class TestContingencyTableAnalysis:

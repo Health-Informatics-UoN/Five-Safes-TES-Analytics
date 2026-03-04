@@ -2,31 +2,37 @@ import numpy as np
 from typing import List, Dict, Any, Union
 
 
+from five_safes_tes_analytics.aggregation.statistical_analyzer import (
+    StatisticalAnalyzer,
+)
+
+
 class DataProcessor:
     """
     Handles data processing, aggregation, and file operations for federated analysis.
     """
-    
+
     def __init__(self):
         """Initialize the data processor."""
         pass
-    
 
-    def convert_csv_to_dict(self, csv_inputs: List[str], analysis_config: Dict[str, Any]) -> Dict[str, Any]:
+    def convert_csv_to_dict(
+        self, csv_inputs: List[str], analysis_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Convert CSV strings to dict format matching the analysis return_format.
-        
+
         Args:
             csv_inputs: List of CSV strings from multiple TREs
             analysis_config: Analysis configuration with return_format
-            
+
         Returns:
             Dict in the format expected by the analysis (dict of lists for single-row,
             or dict with row_data_key for row-based analyses)
         """
         return_format_keys = list(analysis_config["return_format"].keys())
         is_row_based = len(return_format_keys) == 1
-        
+
         if is_row_based:
             # For row-based analyses: convert CSV to list of dicts, then wrap in return_format key
             # Use combine_contingency_tables to parse and aggregate CSV
@@ -64,24 +70,25 @@ class DataProcessor:
                         continue
             return result_dict
 
-
-    def aggregate_data(self, inputs: Union[List[str], Dict[str, List[float]], List[Dict[str, Any]]], analysis_type: str) -> Union[np.ndarray, List[np.ndarray]]:
+    def aggregate_data(
+        self,
+        inputs: Union[List[str], Dict[str, List[float]], List[Dict[str, Any]]],
+        analysis_type: str,
+    ) -> Union[np.ndarray, List[np.ndarray]]:
         """
         Aggregate data based on analysis type.
-        
+
         Args:
-            inputs: Either List[str] (CSV strings), Dict[str, List[float]] (pre-aggregated JSON dict), 
+            inputs: Either List[str] (CSV strings), Dict[str, List[float]] (pre-aggregated JSON dict),
                     or List[Dict[str, Any]] (list of JSON results from multiple TREs)
             analysis_type (str): Type of analysis to perform
-            
+
         Returns:
             Union[np.ndarray, List[np.ndarray]]: Aggregated data
         """
-        from statistical_analyzer import StatisticalAnalyzer
-        
         analyzer = StatisticalAnalyzer()
         analysis_config = analyzer.get_analysis_config(analysis_type)
-        
+
         # Convert CSV strings to dict format if needed (before other processing)
         if isinstance(inputs, list) and inputs and isinstance(inputs[0], str):
             # CSV format detected - convert to dict format matching return_format
@@ -110,23 +117,26 @@ class DataProcessor:
                 for table_list in inputs:
                     if isinstance(table_list, list):
                         flattened.extend(table_list)
-                
+
                 # Use the key from return_format instead of hardcoding "contingency_table"
                 # This makes it general for any row-based analysis
                 row_data_key = list(analysis_config["return_format"].keys())[0]
                 inputs = {row_data_key: flattened}
-        
+
         # All paths now result in dict format - just return it
         # CSV conversion would happen earlier if needed (convert CSV to dict first)
         return inputs
 
-def combine_contingency_tables(contingency_tables: List[str] | Dict[str, Any]) -> Dict[str, Any]:
+
+def combine_contingency_tables(
+    contingency_tables: List[str] | Dict[str, Any],
+) -> Dict[str, Any]:
     """
     Combine multiple contingency tables.
-    
+
     Args:
         contingency_tables (List[str]): List of CSV strings containing contingency tables
-        
+
     Returns:
         Dict[str, Any]: Combined contingency table as dictionary
     """
@@ -136,26 +146,26 @@ def combine_contingency_tables(contingency_tables: List[str] | Dict[str, Any]) -
         for key, value in contingency_tables.items():
             contingency_tables[key] = sum(value)
         return contingency_tables
-    
-        
 
     labels = {}
-    
+
     for table in contingency_tables:
-        rows = [row.strip() for row in table.split('\n') if row.strip()]
+        rows = [row.strip() for row in table.split("\n") if row.strip()]
         if not rows:  # Skip empty tables
             continue
-            
+
         labels["header"] = rows[0]  # Column order is guaranteed to be the same
-        
+
         data_rows = rows[1:]
         for row in data_rows:
             try:
-                parts = row.split(',')
+                parts = row.split(",")
                 if len(parts) < 2:  # Skip rows without enough parts
                     continue
                 count = int(parts[-1])  # Get count from last column
-                row_without_count = ','.join(parts[:-1])  # Get rest of row without count
+                row_without_count = ",".join(
+                    parts[:-1]
+                )  # Get rest of row without count
                 if row_without_count in labels:
                     labels[row_without_count] += count
                 else:
@@ -163,38 +173,42 @@ def combine_contingency_tables(contingency_tables: List[str] | Dict[str, Any]) -
             except (ValueError, IndexError) as e:
                 print(f"Warning: Skipping malformed row: {row}")
                 continue
-    
+
     return labels
-    
+
+
 def dict_to_array(contingency_dict: Dict[str, Any]) -> np.ndarray:
     """
     Convert contingency table dictionary to numpy array.
-    
+
     Args:
         contingency_dict (Dict[str, Any]): Contingency table as dictionary
-        
+
     Returns:
         np.ndarray: Contingency table as 2D array
     """
     # Get unique values for each dimension from the keys
-    keys = [k for k in contingency_dict.keys() if k != 'header']
-    first_values = set(k.split(',')[0] for k in keys)
-    second_values = set(k.split(',')[1] for k in keys)
-    
+    keys = [k for k in contingency_dict.keys() if k != "header"]
+    first_values = set(k.split(",")[0] for k in keys)
+    second_values = set(k.split(",")[1] for k in keys)
+
     # Create empty array
     row_labels = list(first_values)
     col_labels = list(second_values)
     result = np.zeros((len(row_labels), len(col_labels)))
-    
-    labels = {"row_labels": row_labels, "col_labels": col_labels, "header": contingency_dict.get('header', '')}
-    
+
+    labels = {
+        "row_labels": row_labels,
+        "col_labels": col_labels,
+        "header": contingency_dict.get("header", ""),
+    }
+
     # Fill array using the keys to determine position
     for key, value in contingency_dict.items():
-        if key != 'header':
-            first_part, second_part = key.split(',')
-            row_idx = row_labels.index(first_part)   # First part as rows
+        if key != "header":
+            first_part, second_part = key.split(",")
+            row_idx = row_labels.index(first_part)  # First part as rows
             col_idx = col_labels.index(second_part)  # Second part as columns
             result[row_idx, col_idx] = value
-    
-    return result, labels
 
+    return result, labels
