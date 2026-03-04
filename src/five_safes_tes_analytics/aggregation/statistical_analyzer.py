@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from tdigest import TDigest
 import json
 
-from five_safes_tes_analytics.analytics.aggregation.data_processor import dict_to_array, combine_contingency_tables
+from five_safes_tes_analytics.aggregation.data_processor import dict_to_array, combine_contingency_tables
 
 
 class AnalysisBase(ABC):

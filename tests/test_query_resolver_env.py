@@ -14,7 +14,7 @@ pytest.importorskip("sqlalchemy")
 # Add docker directory so we can import query_resolver at runtime
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'docker')))
 
-import query_resolver  # type: ignore[import-untyped]
+from five_safes_tes_analytics.node import query_resolver  # type: ignore[import-untyped]
 
 
 class TestParseConnectionStringFromEnv:

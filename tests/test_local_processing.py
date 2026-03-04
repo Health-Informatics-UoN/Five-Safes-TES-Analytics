@@ -1,10 +1,8 @@
 import pytest
 import json
-import tempfile
 import os
-from unittest.mock import Mock, patch, MagicMock
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from unittest.mock import Mock, MagicMock
+from sqlalchemy import text
 import sys
 
 # Add the parent directory to the path
