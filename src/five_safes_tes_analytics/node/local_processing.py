@@ -2,7 +2,7 @@ from sqlalchemy import text
 from tdigest import TDigest
 import math
 
-from five_safes_tes_analytics.node.local_processing_base import BaseLocalProcessing
+from .local_processing_base import BaseLocalProcessing
 
 
 class Mean(BaseLocalProcessing):
