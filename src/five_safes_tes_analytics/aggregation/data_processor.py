@@ -171,7 +171,7 @@ def combine_contingency_tables(
                 else:
                     labels[row_without_count] = count
             except (ValueError, IndexError) as e:
-                print(f"Warning: Skipping malformed row: {row}")
+                print(f"Warning: Skipping malformed row: {row} due to error {e}")
                 continue
 
     return labels
