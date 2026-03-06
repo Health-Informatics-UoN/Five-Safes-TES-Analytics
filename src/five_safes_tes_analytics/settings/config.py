@@ -3,21 +3,11 @@ from pathlib import Path
 from pydantic_core import Url
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Settings to capture:
-# 
-# 5STES_PROJECT=your_project_name
-#
-# # MinIO Configuration
-# MINIO_STS_ENDPOINT=http://your-minio-endpoint:9000/sts
-# MINIO_ENDPOINT=your-minio-endpoint:9000
-# MINIO_OUTPUT_BUCKET=your-output-bucket-name 
-#
-# # TRE Configuration
-# 5STES_TRES=TRE1,TRE2
-
 class TesClientConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
     TES_base_url: Url
+    TES_project: str
+    TES_tres: list[str]
     tes_docker_image: str
     postgresPort: int = 5432
     postgresServer: str
@@ -48,6 +38,10 @@ class TesClientConfig(BaseSettings):
     @property
     def default_db_port(self) -> int:
         return self.postgresPort
+
+    @property
+    def db_url(self) -> str:
+        return f"postgres://{self.postgresUsername}:{self.postgresPassword}@{self.postgresServer}:{self.postgresPort}/{self.postgresDatabase}"
 
     @property
     def default_db_config(self) -> dict[str, str]:
@@ -101,5 +95,9 @@ class SubmissionConfig(BaseSettings):
         return str(self.SubmissionAPIBaseKeyCloakUrl)
 
 
+class MinioConfig(BaseSettings):
+    minio_sts_endpoint: Url
+    minio_endpoint: Url
+    minio_output_bucket: str
 
 
