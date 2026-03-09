@@ -5,7 +5,7 @@ import json
 
 @pytest.fixture
 def bunny_example() -> parse_bunny.BunnyTSVOutput:
-    with open("tests/test-data/100concepts.json", "r") as f:
+    with open("tests/test-data/1kconcepts.json", "r") as f:
         bunny_json = json.load(f)
         return parse_bunny.BunnyTSVOutput.model_validate(bunny_json)
 
@@ -21,7 +21,7 @@ def test_bunny_query_result_fields(bunny_example):
     assert bunny_example.queryResult.datasetCount == 1
 
 def test_bunny_table_parser():
-    table = parse_bunny.parse_bunny("tests/test-data/100concepts.json")
+    table = parse_bunny.parse_bunny("tests/test-data/1kconcepts.json")
     assert isinstance(table, DataFrame)
     assert len(table) == 374
     assert list(table.columns) == [
