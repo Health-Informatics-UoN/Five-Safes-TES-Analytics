@@ -1,6 +1,6 @@
-from polars import DataFrame
+from pandas import DataFrame
 import pytest
-import parse_bunny
+from five_safes_tes_analytics.utils import parse_bunny
 import json
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def test_bunny_table_parser():
     table = parse_bunny.parse_bunny("tests/test-data/100concepts.json")
     assert isinstance(table, DataFrame)
     assert len(table) == 374
-    assert table.columns == [
+    assert list(table.columns) == [
             "BIOBANK",
             "CODE",
             "COUNT",

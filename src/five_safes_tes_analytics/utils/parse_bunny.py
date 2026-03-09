@@ -1,5 +1,5 @@
 from pydantic import BaseModel, model_validator
-import polars as pl
+import pandas as pd
 from io import StringIO
 from typing import Any
 import json
@@ -17,7 +17,7 @@ class BunnyFile(BaseModel):
     file_size: float
     file_type: str
 
-    def parse_table(self) -> pl.DataFrame:
+    def parse_table(self) -> pd.DataFrame:
         """
         Tries to parse the `file_data` field of a BunnyFile as a TSV table
 
@@ -26,9 +26,9 @@ class BunnyFile(BaseModel):
         pl.DataFrame
             The data held in the file_data string as a data frame
         """
-        return pl.read_csv(
+        return pd.read_csv(
             StringIO(self.file_data),
-            separator="\t"
+            sep="\t"
         )
 
 
@@ -73,7 +73,7 @@ class BunnyTSVOutput(BaseModel):
     protocolVersion: str
     queryResult: BunnyQueryResult
 
-def parse_bunny(path) -> pl.DataFrame:
+def parse_bunny(path) -> pd.DataFrame:
     """
     Given the path of a decoded JSON of Bunny output, parses the JSON as a BunnyTSVOutput, then pulls out the code.distribution table
 
