@@ -1,14 +1,11 @@
-import pytest
 import json
-import os
 from unittest.mock import Mock, MagicMock
+
+import pytest
 from sqlalchemy import text
-import sys
 
-# Add the parent directory to the path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from Container.local_processing import (
+from five_safes_tes_analytics.node.local_processing import (
     BaseLocalProcessing, Mean, Variance, PMCC, ContingencyTable, PercentileSketch,
     LOCAL_PROCESSING_CLASSES, get_local_processing_registry
 )
