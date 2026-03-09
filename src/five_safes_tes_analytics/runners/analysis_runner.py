@@ -170,8 +170,6 @@ class AnalysisRunner:
         if analysis_type not in self.statistical_analyzer.analysis_classes:
             raise ValueError(f"Unsupported analysis type: {analysis_type}")
         
-        analysis_class = self.statistical_analyzer.analysis_classes[analysis_type]
-        
         # Check if we have the required data for this analysis
         if not self._has_required_data(analysis_type):
             raise ValueError(f"Stored data is not compatible with {analysis_type} analysis")

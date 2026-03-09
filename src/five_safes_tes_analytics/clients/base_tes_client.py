@@ -525,7 +525,7 @@ class BaseTESClient(ABC):
             
             # Debug: Print response details for 400 errors
             if response.status_code == 400:
-                print(f"400 Bad Request Response:")
+                print("400 Bad Request Response:")
                 print(f"Status Code: {response.status_code}")
                 print(f"Response Headers: {dict(response.headers)}")
                 print(f"Response Content: {response.text}")

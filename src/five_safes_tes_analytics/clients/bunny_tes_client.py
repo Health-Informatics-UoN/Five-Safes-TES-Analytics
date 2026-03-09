@@ -80,14 +80,14 @@ class BunnyTES(base_tes_client.BaseTESClient):
         "demographics": ("DEMOGRAPHICS", "DEMOGRAPHICS")
         }
 
-        code, analysis = code_analysis_pairs[analysis.lower()]
+        _, analysis = code_analysis_pairs[analysis.lower()]
 
         self.command = [
-            f"--body-json",
-            f"{{\"code\":\"{code}\",\"analysis\":\"{analysis}\",\"uuid\":\"123\",\"collection\":\"test\",\"owner\":\"me\"}}",
-            f"--output",
-            f"{output_path}/output.json",
-            f"--no-encode"
+            "--body-json",
+            "{{\"code\":\"{code}\",\"analysis\":\"{analysis}\",\"uuid\":\"123\",\"collection\":\"test\",\"owner\":\"me\"}}",
+            "--output",
+            "{output_path}/output.json",
+            "--no-encode"
         ]
         return None
 

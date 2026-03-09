@@ -25,7 +25,7 @@ class AnalysisBase(ABC):
         pass
     
     @abstractmethod
-    def analyze(self, aggregated_data: Union[np.ndarray, Dict[str, List[float]]]) -> Union[float, Dict[str, Any]]:
+    def analyze(self) -> Union[float, Dict[str, Any]]:
         """Analyze aggregated data."""
         pass
 
@@ -121,11 +121,6 @@ class PMCCAnalysis(AnalysisBase):
     def analyze(self) -> float:
         """Calculate Pearson's correlation coefficient from aggregated values."""
 
-        
-        # Calculate means
-        mean_x = self.aggregated_data["sum_x"] / self.aggregated_data["n"]
-        mean_y = self.aggregated_data["sum_y"] / self.aggregated_data["n"]
-        
         # Calculate standard deviations
         std_x = np.sqrt(self.aggregated_data["sum_x2"] - (self.aggregated_data["sum_x"] ** 2) / self.aggregated_data["n"])
         std_y = np.sqrt(self.aggregated_data["sum_y2"] - (self.aggregated_data["sum_y"] ** 2) / self.aggregated_data["n"])
@@ -365,7 +360,7 @@ class StatisticalAnalyzer:
         """
         return list(self.analysis_classes.keys())
     
-    def analyze_data(self, input_data: Union[np.ndarray, List[np.ndarray], Dict[str, List[float]]], analysis_type: str) -> Union[float, Dict[str, Any]]:
+    def analyze_data(self, analysis_type: str) -> Union[float, Dict[str, Any]]:
         """
         Analyze data using the specified analysis type.
         
@@ -383,9 +378,6 @@ class StatisticalAnalyzer:
             raise ValueError(f"Unsupported analysis type: {analysis_type}")
         
         analysis_class = self.analysis_classes[analysis_type]
-        
-        # Aggregate data
-        aggregated_data = analysis_class.aggregate_data(input_data)
         
         # Perform analysis
         ##don't pass in the aggregated data, just call the analyze method. Data is stored in the class.

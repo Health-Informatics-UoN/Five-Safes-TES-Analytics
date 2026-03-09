@@ -405,7 +405,7 @@ class MinIOClient:
                 reader = csv.DictReader(StringIO(content))
                 data = next(reader)
                 return data
-            except:
+            except :
                 # Fall back to raw string
                 return content
 
