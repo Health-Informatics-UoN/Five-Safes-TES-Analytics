@@ -368,7 +368,7 @@ class TestClickCLI:
         output_format = "json"
         
         # process_query catches all exceptions and calls sys.exit(1)
-        with patch('query_resolver.click.echo') as mock_echo:
+        with patch('five_safes_tes_analytics.node.query_resolver.click.echo') as mock_echo:
             with pytest.raises(SystemExit):
                 query_resolver.process_query(user_query, analysis, db_connection, output_filename, output_format)
             
@@ -386,7 +386,7 @@ class TestClickCLI:
         output_format = "json"
         
         # Mock the database engine and connection
-        with patch('query_resolver.create_engine') as mock_create_engine:
+        with patch('five_safes_tes_analytics.node.query_resolver.create_engine') as mock_create_engine:
             mock_engine = Mock()
             mock_conn = Mock()
             
@@ -542,3 +542,4 @@ class TestClickCLI:
             # Clean up database
             if os.path.exists(temp_db_path):
                 os.remove(temp_db_path)
+
