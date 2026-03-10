@@ -2,11 +2,6 @@ import numpy as np
 from typing import List, Dict, Any, Union
 
 
-from five_safes_tes_analytics.aggregation.statistical_analyzer import (
-    StatisticalAnalyzer,
-)
-
-
 class DataProcessor:
     """
     Handles data processing, aggregation, and file operations for federated analysis.
@@ -86,6 +81,10 @@ class DataProcessor:
         Returns:
             Union[np.ndarray, List[np.ndarray]]: Aggregated data
         """
+        # TODO: lazy import to avoid circular dependency with statistical_analyzer;
+        # resolve by extracting shared config/utilities in a later refactor.
+        from five_safes_tes_analytics.aggregation.statistical_analyzer import StatisticalAnalyzer
+    
         analyzer = StatisticalAnalyzer()
         analysis_config = analyzer.get_analysis_config(analysis_type)
 
