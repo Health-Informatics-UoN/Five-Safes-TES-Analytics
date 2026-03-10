@@ -79,3 +79,30 @@ class TestParseConnectionStringFromEnv:
                 query_resolver.validate_environment()
         assert "Missing required env var" in str(exc_info.value)
         assert "postgres" in str(exc_info.value)
+
+
+class TestProcessQuery: 
+    DB_CONN = "postgresql://user:pass@localhost:5432/db"
+    USER_QUERY = "SELECT * FROM users"
+
+    @patch('five_safes_tes_analytics.node.query_resolver.create_engine')
+    def test_process_query_with_unsupported_analysis_type(self, mock_create_engine):
+        """Unsupported analysis type should cause sys.exit(1)."""
+        with pytest.raises(SystemExit) as exc_info:
+            query_resolver.process_query(self.USER_QUERY, "unsupported", self.DB_CONN, "output", "json")
+        assert exc_info.value.code == 1
+
+    @patch('five_safes_tes_analytics.node.query_resolver.create_engine')
+    def test_process_query_with_none_analysis_type(self, mock_create_engine):
+        """None analysis type should cause sys.exit(1)."""
+        with pytest.raises(SystemExit) as exc_info:
+            query_resolver.process_query(self.USER_QUERY, None, self.DB_CONN, "output", "json")
+        assert exc_info.value.code == 1
+
+    @patch('five_safes_tes_analytics.node.query_resolver.create_engine')
+    def test_process_query_unsupported_analysis_type_error_message(self, mock_create_engine, capsys):
+        """Error message should mention the unsupported analysis type."""
+        with pytest.raises(SystemExit):
+            query_resolver.process_query(self.USER_QUERY, "unsupported", self.DB_CONN, "output", "json")
+        captured = capsys.readouterr()
+        assert "Unsupported analysis type" in captured.err

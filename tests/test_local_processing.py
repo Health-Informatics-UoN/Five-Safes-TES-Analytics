@@ -33,44 +33,6 @@ class TestBaseLocalProcessing:
         with pytest.raises(TypeError):
             BaseLocalProcessing()
     
-    def test_build_query_without_analysis_type(self):
-        """Test build_query when analysis_type is None raises ValueError."""
-        class TestProcessor(BaseLocalProcessing):
-            @property
-            def description(self):
-                return "Test"
-            
-            @property
-            def processing_query(self):
-                return "SELECT * FROM test"
-            
-            @property
-            def user_query_requirements(self):
-                return "Test requirements"
-        
-        processor = TestProcessor(analysis_type=None, user_query="SELECT * FROM users")
-        with pytest.raises(ValueError, match="Unsupported analysis type: None"):
-            processor.build_query()
-    
-    def test_build_query_with_unsupported_analysis_type(self):
-        """Test build_query with unsupported analysis type."""
-        class TestProcessor(BaseLocalProcessing):
-            @property
-            def description(self):
-                return "Test"
-            
-            @property
-            def processing_query(self):
-                return "SELECT * FROM test"
-            
-            @property
-            def user_query_requirements(self):
-                return "Test requirements"
-        
-        processor = TestProcessor(analysis_type="unsupported", user_query="SELECT * FROM users")
-        with pytest.raises(ValueError, match="Unsupported analysis type"):
-            processor.build_query()
-    
     def test_build_query_with_valid_analysis(self):
         """Test build_query with valid analysis type."""
         class TestProcessor(BaseLocalProcessing):
