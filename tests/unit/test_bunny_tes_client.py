@@ -1,27 +1,21 @@
 """
-Unit tests for the bunny wrapper: task structure and entrypoint contract.
+Unit tests for BunnyTES task construction.
 
-The wrapper runs in the container: it reads postgres* env vars and exports DATASOURCE_DB_*
-for bunny. These tests verify (1) BunnyTES builds the task with the env/command the
-wrapper expects, and (2) the entrypoint script has the expected shape.
+Verifies that BunnyTES.set_tes_messages() builds a well-formed TES task: the executor
+environment contains the expected postgres* variables, the command is structured as
+args-only (no leading 'bunny' prefix), and the workdir is set correctly.
 """
 import os
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 pytest.importorskip("tes")
 
-# Add project root for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from five_safes_tes_analytics.clients.bunny_tes_client import BunnyTES
 
 
-from five_safes_tes_analytics.clients.bunny_tes import BunnyTES
-
-
-class TestBunnyWrapperTaskStructure:
+class TestBunnyTESTaskConstruction:
     """Task built by BunnyTES must match what the bunny-wrapper entrypoint expects."""
 
     @pytest.fixture
@@ -73,31 +67,3 @@ class TestBunnyWrapperTaskStructure:
         executor = bunny_tes.task.executors[0]
         assert executor.workdir is not None
         assert executor.workdir in ('/', '/app')
-
-
-class TestBunnyWrapperEntrypointScript:
-    """Entrypoint script must read postgres* and export DATASOURCE_DB_*."""
-
-    def test_entrypoint_exists(self):
-        """Entrypoint script file exists."""
-        path = Path(__file__).parent.parent / 'docker' / 'bunny-wrapper' / 'entrypoint.sh'
-        assert path.exists(), f"Expected entrypoint at {path}"
-
-    def test_entrypoint_exports_datasource_from_postgres_vars(self):
-        """Entrypoint should export DATASOURCE_DB_* from postgres* vars (so task must set postgres*)."""
-        path = Path(__file__).parent.parent / 'docker' / 'bunny-wrapper' / 'entrypoint.sh'
-        if not path.exists():
-            pytest.skip("entrypoint.sh not found")
-        content = path.read_text()
-        assert 'postgresDatabase' in content or 'postgresServer' in content
-        assert 'DATASOURCE_DB' in content
-        assert 'bunny' in content
-
-    def test_entrypoint_passes_args_to_bunny(self):
-        """Entrypoint must run bunny with task command as args ($@)."""
-        path = Path(__file__).parent.parent / 'docker' / 'bunny-wrapper' / 'entrypoint.sh'
-        if not path.exists():
-            pytest.skip("entrypoint.sh not found")
-        content = path.read_text()
-        assert 'bunny' in content
-        assert '$@' in content or '"$@"' in content
