@@ -1,6 +1,6 @@
 from polars import DataFrame
 import pytest
-import parse_bunny
+from five_safes_tes_analytics.utils import parse_bunny
 import json
 
 @pytest.fixture
