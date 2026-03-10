@@ -10,7 +10,6 @@ import pytest
 
 pytest.importorskip("sqlalchemy")
 
-
 from five_safes_tes_analytics.node import query_resolver  
 
 
