@@ -1,6 +1,17 @@
 """
-Unit tests for query_resolver building the connection string from environment variables
-when --db-connection is not provided (e.g. when run in the container with postgres* env set).
+Unit tests for five_safes_tes_analytics.node.query_resolver.
+
+Covers:
+- Building a PostgreSQL connection URL from environment variables. 
+- process_query() exiting with code 1 and writing an appropriate error message
+  for unsupported analysis types and database errors.
+- process_query() correctly writing JSON output for valid analysis types.
+- parse_connection_string() converting semicolon-format connection strings to
+  SQLAlchemy URLs, including special character encoding.
+- The Click CLI interface: expected options, their names, and defaults.
+
+All tests are unit tests — external dependencies (SQLAlchemy engine, database
+connections) are mocked. No real database or container is required.
 """
 import json 
 import os

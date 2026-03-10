@@ -255,10 +255,9 @@ class TestPercentileSketch:
         result = processor.python_analysis(mock_result)
         
         # Should return JSON string
-        assert isinstance(result, str)
-        json_data = json.loads(result)
-        assert "centroids" in json_data
-        assert "n" in json_data
+        assert isinstance(result, dict)
+        assert "centroids" in result
+        assert "n" in result
 
 
 class TestRegistry:
@@ -305,7 +304,7 @@ class TestRegistry:
         assert isinstance(percentile_processor, PercentileSketch)
 
 
-class TestDockerIntegration:
+class TestLocalProcessingWorkflows:
     """Test Docker container integration scenarios."""
     
     def test_mean_analysis_integration(self):
@@ -403,37 +402,13 @@ class TestDockerIntegration:
         
         # Test python analysis
         result = processor.python_analysis(mock_result)
-        assert isinstance(result, str)
-        
-        # Parse JSON result
-        json_data = json.loads(result)
-        assert "centroids" in json_data
-        assert "n" in json_data
+        assert isinstance(result, dict)
+        assert "centroids" in result
+        assert "n" in result
 
 
 class TestErrorHandling:
     """Test error handling scenarios."""
-    
-    def test_unsupported_analysis_type(self):
-        """Test error handling for unsupported analysis type."""
-        class TestProcessor(BaseLocalProcessing):
-            @property
-            def description(self):
-                return "Test"
-            
-            @property
-            def processing_query(self):
-                return "SELECT * FROM test"
-            
-            @property
-            def user_query_requirements(self):
-                return "Test requirements"
-        
-        processor = TestProcessor(analysis_type="unsupported", user_query="SELECT * FROM users")
-        
-        with pytest.raises(ValueError, match="Unsupported analysis type"):
-            processor.build_query()
-    
     def test_database_connection_error(self):
         """Test error handling for database connection issues."""
         mock_engine = Mock()
