@@ -307,7 +307,7 @@ class TestRegistry:
 class TestLocalProcessingWorkflows:
     """Test Docker container integration scenarios."""
     
-    def test_mean_analysis_integration(self):
+    def test_mean_analysis_workflow(self):
         """Test complete Mean analysis workflow."""
         user_query = "SELECT value_as_number FROM measurements WHERE value_as_number IS NOT NULL"
         
@@ -337,7 +337,7 @@ class TestLocalProcessingWorkflows:
         # Verify execution was called
         mock_conn.execute.assert_called()
     
-    def test_contingency_table_integration(self):
+    def test_contingency_table_workflow(self):
         """Test complete ContingencyTable analysis workflow."""
         user_query = "SELECT gender, race FROM patients"
         
@@ -374,7 +374,7 @@ class TestLocalProcessingWorkflows:
         assert "COUNT(*) AS n" in query
         assert "GROUP BY gender, race" in query
     
-    def test_percentile_sketch_integration(self):
+    def test_percentile_sketch_workflow(self):
         """Test complete PercentileSketch analysis workflow."""
         user_query = "SELECT value_as_number FROM measurements"
         
