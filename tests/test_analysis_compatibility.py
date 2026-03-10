@@ -6,8 +6,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import pytest
 import numpy as np
 from unittest.mock import Mock, patch
-from five_safes_tes_analytics.runner import AnalysisRunner
-from analytics_tes import AnalyticsTES
+from five_safes_tes_analytics.runners.analysis_runner import AnalysisRunner
+from five_safes_tes_analytics.clients.analytics_tes_client import AnalyticsTES
 
 
 class TestAnalysisCompatibility:
