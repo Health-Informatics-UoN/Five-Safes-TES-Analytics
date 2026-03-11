@@ -7,11 +7,7 @@ from five_safes_tes_analytics.clients.base_tes_client import BaseTESClient
 from five_safes_tes_analytics.clients.analytics_tes_client import AnalyticsTES
 from five_safes_tes_analytics.aggregation.data_processor import DataProcessor 
 from five_safes_tes_analytics.aggregation.statistical_analyzer import StatisticalAnalyzer
-<<<<<<< HEAD
 from five_safes_tes_analytics.auth.submission_api_session import SubmissionAPISession 
-=======
-from five_safes_tes_analytics.services.submission_api_session import SubmissionAPISession 
->>>>>>> a8734dc04d26cb8b308e5e82475d6d5d1b4034df
 from five_safes_tes_analytics.runners.analysis_orchestrator import AnalysisOrchestrator
 
 
