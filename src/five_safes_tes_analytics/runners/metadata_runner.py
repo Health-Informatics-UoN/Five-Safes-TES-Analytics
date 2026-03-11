@@ -8,7 +8,9 @@ from five_safes_tes_analytics.auth.submission_api_session import SubmissionAPISe
 
 
 class MetadataRunner:
-    def __init__(self, tes_client: BaseTESClient = BunnyTES(), project: str = None):
+    def __init__(self, tes_client: BaseTESClient = None, project: str = None):
+        if tes_client is None: 
+            tes_client = BunnyTES()
         self.analysis_orchestrator = None 
         self.tes_client = tes_client
         self.project = project 
