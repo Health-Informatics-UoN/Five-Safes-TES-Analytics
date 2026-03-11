@@ -27,8 +27,7 @@ jobs:
           python-version-file: ".python-version"
 
       - name: uv sync
-        run: uv sync --frozen --dev
+        run: uv sync --frozen --extra dev
 
       - name: Run unit tests
         run: uv run pytest tests/unit
-        
