@@ -1,11 +1,6 @@
 import pytest
 import numpy as np
 from unittest.mock import patch
-import sys
-import os
-
-# Add the parent directory to the path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from five_safes_tes_analytics.aggregation.statistical_analyzer import ContingencyTableAnalysis
 
@@ -76,7 +71,7 @@ class TestContingencyTableAnalysis:
     def test_contingency_table_aggregation(self, contingency_analyzer, aggregated_contingency_data):
         """Test aggregating contingency table data from multiple TREs."""
         # Aggregate the data
-        aggregated = contingency_analyzer.aggregate_data(aggregated_contingency_data)
+        _ = contingency_analyzer.aggregate_data(aggregated_contingency_data)
         
         # Check that aggregated data is stored
         assert contingency_analyzer.aggregated_data is not None
@@ -150,7 +145,7 @@ class TestContingencyTableAnalysis:
             ]
             
             # Aggregate the data
-            aggregated = contingency_analyzer.aggregate_data(csv_data)
+            _ = contingency_analyzer.aggregate_data(csv_data)
             
             # Check that we get a valid contingency table
             contingency_table = contingency_analyzer.aggregated_data["contingency_table"]

@@ -97,7 +97,7 @@ class TestAnalysisCompatibility:
 
                 # Run mean analysis first (use analysis_runner with mocks, not fixture runner)
                 user_query = "SELECT value_as_number FROM measurement WHERE concept_id = 123"
-                result1 = analysis_runner.run_analysis("mean", user_query, ["TRE1", "TRE2"])
+                _ = analysis_runner.run_analysis("mean", user_query, ["TRE1", "TRE2"])
 
                 # Check that aggregated_data is stored as a dict with expected keys
                 assert analysis_runner.aggregated_data is not None
@@ -186,7 +186,7 @@ class TestAnalysisCompatibility:
 
                 # Run variance analysis first
                 user_query = "SELECT value_as_number FROM public.measurement WHERE measurement_concept_id = 21490742"
-                result1 = analysis_runner.run_analysis(
+                _ = analysis_runner.run_analysis(
                     "variance", user_query, ["TRE1", "TRE2", "TRE3"]
                 )
 
@@ -302,7 +302,7 @@ class TestAnalysisCompatibility:
                 # Run variance analysis (this will store data in the centralized dict)
                 # This triggers the full pipeline: task submission, polling, data processing, analysis
                 user_query = "SELECT value_as_number FROM measurement WHERE concept_id = 123"
-                result = runner.run_analysis("variance", user_query, ["TRE1"])
+                _ = runner.run_analysis("variance", user_query, ["TRE1"])
 
                 # Verify that aggregated data is stored in the centralized dictionary
                 # This is the core feature being tested - data persistence for reuse
