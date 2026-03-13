@@ -8,52 +8,56 @@ class DistributionCodesets:
         self.table_names = list(table_paths.keys())
         self.tables = build_tables(table_paths)
 
-    def get_counts_by_TRE(self) -> pd.DataFrame:
+    @property
+    def counts_by_TRE(self) -> pd.DataFrame:
         dfs = [
             df
                 .loc[df["OMOP"] != 0]
         for df in self.tables.values()]
         return pd.concat(dfs).pivot(index="OMOP", columns="TRE", values="COUNT")
 
-    def get_tre_memberships(self) -> pd.Series:
-        counts = self.get_counts_by_TRE()
+    @property
+    def tre_memberships(self) -> pd.Series:
+        counts = self.counts_by_TRE
         return pd.Series(counts.apply(
             lambda row: str(list([counts.columns[i] for i, x in enumerate(row) if x > 0])),
                             axis=1
         ))
 
-    def get_code_intersections(self) -> pd.DataFrame:
-        membership = self.get_tre_memberships()
+    @property
+    def code_intersections(self) -> pd.DataFrame:
+        membership = self.tre_memberships
         return pd.DataFrame(membership.groupby(membership).count())
 
-    def get_all_descriptions(self) -> pd.DataFrame:
+    @property
+    def all_descriptions(self) -> pd.DataFrame:
         description_tables = [v[["OMOP", "OMOP_DESCR"]] for v in self.tables.values()]
         return pd.DataFrame(pd.concat(description_tables).groupby("OMOP").first())
 
     def get_codes_by_membership(self, membership_string: str) -> pd.DataFrame:
-        membership = self.get_tre_memberships().reset_index()
+        membership = self.tre_memberships.reset_index()
         membership.columns = ["OMOP", "membership"]
         filtered_membership = membership[membership["membership"] == membership_string]
         return pd.DataFrame(filtered_membership)
 
     def plot_top_k_by_count(self, k: int) -> alt.Chart:
-        counts = self.get_counts_by_TRE().fillna(0)
+        counts = self.counts_by_TRE.fillna(0)
         counts["total"] = counts.apply(lambda row: sum(row), axis=1)
         top_k_by_count = counts.sort_values(by="total", ascending=False).drop("total", axis=1)[:k]
         top_k_by_count = top_k_by_count.stack().reset_index()
         top_k_by_count.columns = ["OMOP", "TRE", "Count"]
-        top_k_by_count = top_k_by_count.join(self.get_all_descriptions(), on="OMOP")
+        top_k_by_count = top_k_by_count.join(self.all_descriptions, on="OMOP")
         return count_bar(top_k_by_count)
 
     def plot_by_codes(self, descriptions: list[str]) -> alt.Chart:
-        counts = self.get_counts_by_TRE().fillna(0).stack().reset_index()
+        counts = self.counts_by_TRE.fillna(0).stack().reset_index()
         counts.columns = ["OMOP", "TRE", "Count"]
         matching_counts = counts[counts["OMOP"].isin(descriptions)]
-        for_plot = matching_counts.join(self.get_all_descriptions(), on="OMOP")
+        for_plot = matching_counts.join(self.all_descriptions, on="OMOP")
         return count_bar(for_plot)
 
     def plot_count_heatmap(self) -> alt.Chart:
-        counts = self.get_counts_by_TRE()
+        counts = self.counts_by_TRE
 
         tre_mat = []
 
@@ -75,7 +79,7 @@ class DistributionCodesets:
         # the funny indices you get from the pivot
         data = pd.DataFrame(
                 self
-                .get_counts_by_TRE()
+                .counts_by_TRE
                 .map(lambda x: 1 if x > 0 else 0)
                 .reset_index(drop=True)
                 .to_dict()
