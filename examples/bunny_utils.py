@@ -95,6 +95,25 @@ class DistributionCodesets:
         filtered_membership = membership[membership["membership"] == membership_string]
         return pd.DataFrame(filtered_membership)
 
+    def get_codes_by_substring_match(self, query_string: str, regex: bool = True) -> pd.DataFrame:
+        """
+        Search codes by whether the OMOP description contains some query_string
+
+        Parameters
+        ----------
+        query_string: str
+            Query to search the OMOP_DESCR field for
+        regex: bool = True
+            Whether to use regex matching. Defaults to True
+
+        Returns
+        -------
+        pd.DataFrame
+            A DataFrame of codes that match the search criterion
+        """
+        counts = self.all_descriptions.reset_index()
+        return pd.DataFrame(counts[counts["OMOP_DESCR"].str.contains(query_string, regex=regex, case=False)])
+
     def plot_top_k_by_count(self, k: int) -> alt.Chart:
         """
         Plot the k codes that have the highest counts across TREs
