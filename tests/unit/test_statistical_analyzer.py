@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 from unittest.mock import patch
-
 from five_safes_tes_analytics.aggregation.statistical_analyzer import ContingencyTableAnalysis
 
 
