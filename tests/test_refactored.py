@@ -6,7 +6,7 @@ This script demonstrates the functionality without requiring actual TRE-FX servi
 
 import pytest
 import numpy as np
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import sys
 import os
 from typing import List, Dict, Any
@@ -14,12 +14,9 @@ from typing import List, Dict, Any
 # Add the current directory to the path so we can import our modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from data_processor import DataProcessor
-from statistical_analyzer import StatisticalAnalyzer
-from tes_client import BaseTESClient
-from minio_client import MinIOClient
-from analytics_tes import AnalyticsTES
-from analysis_runner import AnalysisRunner
+from five_safes_tes_analytics.aggregation.data_processor import DataProcessor
+from five_safes_tes_analytics.aggregation.statistical_analyzer import StatisticalAnalyzer
+from five_safes_tes_analytics.runners.analysis_runner import AnalysisRunner
 
 
 class TestDataProcessor:

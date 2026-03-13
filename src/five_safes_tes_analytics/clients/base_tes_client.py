@@ -3,13 +3,13 @@ import json
 import os
 import requests
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Tuple, TypedDict, Optional, Literal, Union
+from typing import Dict, Any, List, TypedDict, Union
 from dotenv import load_dotenv
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 from enum import IntEnum
 
-from submission_api_session import SubmissionAPISession 
+from five_safes_tes_analytics.auth.submission_api_session import SubmissionAPISession 
 
 
 # Load environment variables from .env file

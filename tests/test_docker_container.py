@@ -2,19 +2,15 @@ import pytest
 import json
 import tempfile
 import os
-import subprocess
 import sys
-from unittest.mock import Mock, patch, MagicMock
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from unittest.mock import Mock, patch
 
 # Add the parent directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import the query_resolver module (docker package)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'docker')))
-import query_resolver
-import local_processing
+from five_safes_tes_analytics.node import query_resolver
 
 
 class TestQueryResolver:

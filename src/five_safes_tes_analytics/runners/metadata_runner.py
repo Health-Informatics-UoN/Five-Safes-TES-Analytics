@@ -1,10 +1,11 @@
-from analysis_orchestrator import AnalysisOrchestrator
 from typing import List, Dict, Any
-from bunny_tes import BunnyTES
-from tes_client import BaseTESClient
-from data_processor import DataProcessor
-from submission_api_session import SubmissionAPISession 
-import os
+
+from five_safes_tes_analytics.runners.analysis_orchestrator import AnalysisOrchestrator
+from five_safes_tes_analytics.clients.bunny_tes_client import BunnyTES
+from five_safes_tes_analytics.clients.base_tes_client import BaseTESClient
+from five_safes_tes_analytics.aggregation.data_processor import DataProcessor
+from five_safes_tes_analytics.auth.submission_api_session import SubmissionAPISession 
+
 
 class MetadataRunner:
     def __init__(self, tes_client: BaseTESClient = BunnyTES(), project: str = None):

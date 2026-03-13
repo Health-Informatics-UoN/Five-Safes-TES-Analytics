@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 import csv
 from io import StringIO
 
-from submission_api_session import SubmissionAPISession
+from five_safes_tes_analytics.auth.submission_api_session import SubmissionAPISession
 
 
 # Load environment variables from .env file

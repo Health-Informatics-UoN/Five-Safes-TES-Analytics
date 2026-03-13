@@ -1,13 +1,14 @@
 from sqlalchemy import create_engine, text, engine
-import numpy as np
 from decimal import Decimal
-import local_processing
 import json
 import click
 import sys
 import re
 import os
 from urllib.parse import quote_plus
+
+from . import local_processing
+
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):

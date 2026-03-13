@@ -1,7 +1,7 @@
 [project]
-name = "tre-fx-federated-analysis"
+name = "five-safes-tes-analytics"
 version = "0.1.0"
-description = "Federated analysis tools for TRE-FX"
+description = "Federated analysis tools for Five Safes TES"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -34,5 +34,8 @@ extraPaths = ["docker"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+packages = ["src/five_safes_tes_analytics"]
+
 [tool.uv] 
-package = false
+package = true

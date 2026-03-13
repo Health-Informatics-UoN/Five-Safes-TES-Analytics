@@ -1,10 +1,10 @@
-import tes_client
 import tes
 import os
-from tes import Input, Output, Executor
-from typing import List, Dict, Union
 
-class BunnyTES(tes_client.BaseTESClient):
+from five_safes_tes_analytics.clients import base_tes_client
+
+
+class BunnyTES(base_tes_client.BaseTESClient):
 
     def __init__(self, *args, **kwargs):
         """

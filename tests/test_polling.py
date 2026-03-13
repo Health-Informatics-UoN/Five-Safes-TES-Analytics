@@ -1,15 +1,8 @@
 import pytest
-import polling
-
-from tes_client import BaseTESClient, get_status_description
-from minio_client import MinIOClient
-
-
-
+from five_safes_tes_analytics.services.submission_polling_service import Polling
 
 
 ## [11, 27, 16, 49] are the end statuses
-
 @pytest.mark.parametrize("status_code,expected_description", [
     (11, "Completed"),
     (27, "Failed"),
@@ -27,7 +20,7 @@ def test_poll_task_status(mocker, status_code, expected_description):
     mock_minio_client = mocker.Mock()
 
     #create polling engine with a sample task id of 1
-    polling_engine = polling.Polling(mock_tes_client, mock_minio_client, 1)
+    polling_engine = Polling(mock_tes_client, mock_minio_client, 1)
     
     #call poll_task_status
     polling_engine.poll_task_status()
@@ -49,7 +42,7 @@ def test_poll_minio_results(mocker, n_results):
     mock_minio_client.get_object_smart.return_value = "test_data"
 
     #create polling engine with a sample task id of 1
-    polling_engine = polling.Polling(mock_tes_client, mock_minio_client, '1')
+    polling_engine = Polling(mock_tes_client, mock_minio_client, '1')
     
     #call poll_minio_results
     data = polling_engine.poll_minio_results(["test_path 1", "test_path 2"], "test_bucket", n_results=n_results)
@@ -68,7 +61,7 @@ def test_polling_engine(mocker):
 
     #poll_results(self, results_paths: List[str], bucket: str, n_results: int = 1, polling_interval: int = 10) -> List[str]:
     
-    polling_engine = polling.Polling(mocker.Mock(), mocker.Mock(), '1')
+    polling_engine = Polling(mocker.Mock(), mocker.Mock(), '1')
     # Mock the internal methods of the polling engine
     mocker.patch.object(polling_engine, 'poll_task_status', return_value=(11, "Completed"))
     mocker.patch.object(polling_engine, 'poll_minio_results', return_value=["result1.csv", "result2.csv"])

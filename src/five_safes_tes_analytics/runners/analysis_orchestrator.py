@@ -4,13 +4,14 @@ import tes
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
 
-from tes_client import BaseTESClient
-from minio_client import MinIOClient
-import polling
-from submission_api_session import SubmissionAPISession 
+from five_safes_tes_analytics.clients.base_tes_client import BaseTESClient
+from five_safes_tes_analytics.clients.minio_client import MinIOClient
+from five_safes_tes_analytics.services.submission_polling_service import Polling
+from five_safes_tes_analytics.auth.submission_api_session import SubmissionAPISession 
 
 
 load_dotenv()
+
 
 class AnalysisOrchestrator:
     """
@@ -121,7 +122,7 @@ class AnalysisOrchestrator:
         results_paths = [f"{int(task_id) + i + 1}/output.{output_format}" for i in range(n_results)]
         
         # Use polling engine to collect results
-        polling_engine = polling.Polling(self.tes_client, self.minio_client, task_id)
+        polling_engine = Polling(self.tes_client, self.minio_client, task_id)
         data = polling_engine.poll_results(results_paths, bucket, n_results, polling_interval=10)
         
         return task_id, data
