@@ -6,7 +6,7 @@ on:
 
 jobs:
   bunny-run:
-    name: Run bunny integration test
+    name: Run bunny wrapper entrypoint smoke test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -16,13 +16,14 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Run bunny wrapper entrypoint smoke test
+      - name: Run bunny wrapper container
         working-directory: docker/bunny-wrapper
         run: |
-          docker compose -f test.compose.yml up --build 
-          sleep 10
-          docker compose -f test.compose.yml ps
-          wait
+          docker compose -f test.compose.yml up --build -d
+          docker compose -f test.compose.yml wait bunny
+          CONTAINER_EXIT=$?
+          docker compose -f test.compose.yml down
+          exit $CONTAINER_EXIT
           
       - name: Verify bunny output
         working-directory: docker/bunny-wrapper
@@ -45,9 +46,14 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Run analytics dev integration test
+      - name: Run analytics dev container
         working-directory: docker/analytics-dev
-        run: docker compose -f test.compose.yml up --build 
+        run: |
+          docker compose -f test.compose.yml up --build -d
+          docker compose -f test.compose.yml wait analytics-dev
+          CONTAINER_EXIT=$?
+          docker compose -f test.compose.yml down
+          exit $CONTAINER_EXIT
 
       - name: Verify analytics dev output 
         working-directory: docker/analytics-dev
