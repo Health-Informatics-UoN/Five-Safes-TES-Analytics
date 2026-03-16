@@ -8,11 +8,15 @@ jobs:
   bunny-run:
     name: Run bunny integration test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Run bunny integration test
+      - name: Run bunny wrapper entrypoint smoke test
         working-directory: docker/bunny-wrapper
         run: docker compose -f test.compose.yml up --build --exit-code-from bunny 
     
@@ -27,7 +31,8 @@ jobs:
           [ "$STATUS" = "ok" ] || (echo "Expected status=ok, got "$STATUS" && exit 1)
 
   analytics-dev-run:
-    name: Run analytics dev integration tests
+    needs: bunny-run
+    name: Run analytics dev entrypoint smoke test
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
