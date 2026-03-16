@@ -1,0 +1,49 @@
+name: Check Container Entrypoints
+
+on:
+  push:
+    branches: [main, deliverable/add-ci-and-refine-tests]
+
+jobs:
+  bunny-run:
+    name: Run bunny integration test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Run bunny integration test
+        working-directory: docker/bunny-wrapper
+        run: docker compose -f test.compose.yml up --build --abort-on-container-exit --exit-code-from bunny 
+    
+      - name: Verify bunny output
+        working-directory: docker/bunny-wrapper
+        run: | 
+          OUTPUT=$(cat test-output/output.json)
+          COUNT=$(echo "$OUTPUT" | jq '.queryResult' | jq '.count')
+          STATUS=$(echo "$OUTPUT" | jq '.status')
+
+          [ "$COUNT" = "40" ] || (echo "Expected count=40, got "$COUNT" && exit 1)
+          [ "$STATUS" = "ok" ] || (echo "Expected status=ok, got "$STATUS" && exit 1)
+
+  analytics-dev-run:
+    name: Run analytics dev integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Run analytics dev integration test
+        working-directory: docker/analytics-dev
+        run: docker compose -f test.compose.yml up --build --abort-on-container-exit --exit-code-from analytics-dev
+
+      - name: Verify analytics dev output 
+        working-directory: docker/analytics-dev
+        run: |
+          OUTPUT=$(cat test-output/output.json)
+          N=$(echo "$OUTPUT" | jq '.n')
+          TOTAL=$(echo "$OUTPUT" | jq '.total')
+
+          [ "$N" = "10836" ] || (echo "Expected n=10836, got "$N" && exit 1)
+          [ "$TOTAL" = "54109.0" ] || (echo "Expected total=54109.0, got "$TOTAL" && exit 1)
+            

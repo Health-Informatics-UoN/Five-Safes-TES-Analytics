@@ -5,7 +5,7 @@ import os
 from string import Template 
 from typing import List, Dict, Any 
 
-from five_safes_tes_analytics.clients.analytics_tes import AnalyticsTES
+from five_safes_tes_analytics.clients.analytics_tes_client import AnalyticsTES
 from five_safes_tes_analytics.runners.analysis_runner import AnalysisRunner 
 
 

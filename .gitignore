@@ -73,6 +73,7 @@ logs/
 *.temp
 temp/
 tmp/
+test-output/
 
 # Jupyter Notebook
 .ipynb_checkpoints
