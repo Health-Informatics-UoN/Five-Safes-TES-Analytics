@@ -13,9 +13,8 @@ services:
   omop-lite:
     image: ghcr.io/health-informatics-uon/omop-lite
     depends_on:
-      depends_on:
-        db:
-          condition: service_healthy
+      db:
+        condition: service_healthy
     environment:
       DB_HOST: db
       DB_PASSWORD: postgres
@@ -32,7 +31,7 @@ services:
       - "--output /tmp/output/output.json"
     volumes:
       - ./availability.json:/var/queries/availability.json
-      - ./test-output:/tmp/output
+      - ./test-output:/tmp/output 
     environment:
       postgresServer: db
       postgresPort: 5432
