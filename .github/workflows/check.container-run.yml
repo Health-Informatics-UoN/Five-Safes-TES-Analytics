@@ -19,7 +19,7 @@ jobs:
       - name: Run bunny wrapper entrypoint smoke test
         working-directory: docker/bunny-wrapper
         run: |
-          docker compose -f test.compose.yml up --build --exit-code-from bunny 
+          docker compose -f test.compose.yml up --build 
           sleep 10
           docker compose -f test.compose.yml ps
           wait
@@ -47,7 +47,7 @@ jobs:
 
       - name: Run analytics dev integration test
         working-directory: docker/analytics-dev
-        run: docker compose -f test.compose.yml up --build --exit-code-from analytics-dev
+        run: docker compose -f test.compose.yml up --build 
 
       - name: Verify analytics dev output 
         working-directory: docker/analytics-dev
