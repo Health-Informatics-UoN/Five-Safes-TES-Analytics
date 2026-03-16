@@ -1,8 +1,7 @@
 name: Check Container Entrypoints
 
 on:
-  push:
-    branches: [main, deliverable/add-ci-and-refine-tests]
+  pull_request: 
 
 jobs:
   bunny-run:
