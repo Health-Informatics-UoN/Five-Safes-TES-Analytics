@@ -7846,8 +7846,20 @@ This kind of data can be obtained from Five Safes TES (5STES) by submitting a TE
 <span class="w">         </span><span class="nt">"creation_time"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </pre></div>
-<p>A message like this can be submitted using the submission layer's Raw JSON wizard, substituting your own parameters for <code>"id"</code>, <code>"tags"/"project"</code> and <code>"tags/tres"</code>.
-Alternatively, consult the documentation for the use of the Custom image wizard.</p>
+<p>A message like this can be submitted using the submission layer's Raw JSON wizard, substituting your own parameters for <code>"id"</code>, <code>"tags"/"project"</code> and <code>"tags/tres"</code>.</p>
+<p>This kind of TES message can also be created by using the custom image wizard:
+<img alt="Screenshot of the custom image wizard running a bunny query" src="./bunny-custom-image-wizard.png"/></p>
+<p>The settings need to be:</p>
+<ul>
+<li><strong>Docker Image</strong>: ghcr.io/health-informatics-uon/five-safes-tes-analytics-bunny-cli:latest</li>
+<li><strong>Commands</strong>:</li>
+</ul>
+<pre><code>--body-json
+{"code":"GENERIC","analysis":"DISTRIBUTION","uuid":"123","collection":"test","owner":"me"}
+--output
+/outputs/output.json
+--no-encode
+</code></pre>
 <p>We have provided some utilities to help users interpret the outputs of these distribution queries, importable from <code>bunny_utils</code>.</p>
 </div>
 </div>
@@ -7877,6 +7889,7 @@ Alternatively, consult the documentation for the use of the Custom image wizard.
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>The examples "1k TRE" and "100k TRE" are taken from the synthetic OMOP datasets held in University of Nottingham test TREs.
+The other examples are dummy data created for this demonstration.
 Running the wizard, you should be able to egress files for your output.
 Hopefully, you've kept track of which files come from which TRE.</p>
 <p>Initialising a <code>DistributionCodesets</code> object with a dictionary with names you recognise and the paths to the files means that visualisations etc. will keep those labels.</p>
@@ -8285,7 +8298,7 @@ If you run this notebook, you can hover over the bars to get the OMOP descriptio
 <div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">codesets</span><span class="o">.</span><span class="n">plot_top_k_by_count</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">codesets</span><span class="o">.</span><span class="n">plot_top_k_by_count</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span>
 </pre></div>
 </div>
 </div>
@@ -8299,23 +8312,23 @@ If you run this notebook, you can hover over the bars to get the OMOP descriptio
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[7]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <style>
-  #altair-viz-fb372d5c7874410197a5702f52942700.vega-embed {
+  #altair-viz-378e14e7b259490996b70ebf7bdc9a57.vega-embed {
     width: 100%;
     display: flex;
   }
 
-  #altair-viz-fb372d5c7874410197a5702f52942700.vega-embed details,
-  #altair-viz-fb372d5c7874410197a5702f52942700.vega-embed details summary {
+  #altair-viz-378e14e7b259490996b70ebf7bdc9a57.vega-embed details,
+  #altair-viz-378e14e7b259490996b70ebf7bdc9a57.vega-embed details summary {
     position: relative;
   }
 </style>
-<div id="altair-viz-fb372d5c7874410197a5702f52942700"></div>
+<div id="altair-viz-378e14e7b259490996b70ebf7bdc9a57"></div>
 <script type="text/javascript">
   var VEGA_DEBUG = (typeof VEGA_DEBUG == "undefined") ? {} : VEGA_DEBUG;
   (function(spec, embedOpt){
     let outputDiv = document.currentScript.previousElementSibling;
-    if (outputDiv.id !== "altair-viz-fb372d5c7874410197a5702f52942700") {
-      outputDiv = document.getElementById("altair-viz-fb372d5c7874410197a5702f52942700");
+    if (outputDiv.id !== "altair-viz-378e14e7b259490996b70ebf7bdc9a57") {
+      outputDiv = document.getElementById("altair-viz-378e14e7b259490996b70ebf7bdc9a57");
     }
 
     const paths = {
@@ -8402,23 +8415,23 @@ If you run this notebook, you can hover over the bars to get the OMOP descriptio
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[8]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <style>
-  #altair-viz-af850e57ed5e4da4a0184b771fbdd30a.vega-embed {
+  #altair-viz-77abf1c533dc4e8aa70f5ef32a864dd1.vega-embed {
     width: 100%;
     display: flex;
   }
 
-  #altair-viz-af850e57ed5e4da4a0184b771fbdd30a.vega-embed details,
-  #altair-viz-af850e57ed5e4da4a0184b771fbdd30a.vega-embed details summary {
+  #altair-viz-77abf1c533dc4e8aa70f5ef32a864dd1.vega-embed details,
+  #altair-viz-77abf1c533dc4e8aa70f5ef32a864dd1.vega-embed details summary {
     position: relative;
   }
 </style>
-<div id="altair-viz-af850e57ed5e4da4a0184b771fbdd30a"></div>
+<div id="altair-viz-77abf1c533dc4e8aa70f5ef32a864dd1"></div>
 <script type="text/javascript">
   var VEGA_DEBUG = (typeof VEGA_DEBUG == "undefined") ? {} : VEGA_DEBUG;
   (function(spec, embedOpt){
     let outputDiv = document.currentScript.previousElementSibling;
-    if (outputDiv.id !== "altair-viz-af850e57ed5e4da4a0184b771fbdd30a") {
-      outputDiv = document.getElementById("altair-viz-af850e57ed5e4da4a0184b771fbdd30a");
+    if (outputDiv.id !== "altair-viz-77abf1c533dc4e8aa70f5ef32a864dd1") {
+      outputDiv = document.getElementById("altair-viz-77abf1c533dc4e8aa70f5ef32a864dd1");
     }
 
     const paths = {
@@ -8506,23 +8519,23 @@ These are the codes shared by both of the synthetic datasets.</p>
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[9]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <style>
-  #altair-viz-dfb74fe5d98b44e283df4d81b8c63c37.vega-embed {
+  #altair-viz-4a1261625169413381255ec81fa1ab3c.vega-embed {
     width: 100%;
     display: flex;
   }
 
-  #altair-viz-dfb74fe5d98b44e283df4d81b8c63c37.vega-embed details,
-  #altair-viz-dfb74fe5d98b44e283df4d81b8c63c37.vega-embed details summary {
+  #altair-viz-4a1261625169413381255ec81fa1ab3c.vega-embed details,
+  #altair-viz-4a1261625169413381255ec81fa1ab3c.vega-embed details summary {
     position: relative;
   }
 </style>
-<div id="altair-viz-dfb74fe5d98b44e283df4d81b8c63c37"></div>
+<div id="altair-viz-4a1261625169413381255ec81fa1ab3c"></div>
 <script type="text/javascript">
   var VEGA_DEBUG = (typeof VEGA_DEBUG == "undefined") ? {} : VEGA_DEBUG;
   (function(spec, embedOpt){
     let outputDiv = document.currentScript.previousElementSibling;
-    if (outputDiv.id !== "altair-viz-dfb74fe5d98b44e283df4d81b8c63c37") {
-      outputDiv = document.getElementById("altair-viz-dfb74fe5d98b44e283df4d81b8c63c37");
+    if (outputDiv.id !== "altair-viz-4a1261625169413381255ec81fa1ab3c") {
+      outputDiv = document.getElementById("altair-viz-4a1261625169413381255ec81fa1ab3c");
     }
 
     const paths = {
@@ -8609,23 +8622,23 @@ These are the codes shared by both of the synthetic datasets.</p>
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[10]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <style>
-  #altair-viz-81f174cc10814f3cbacef1a76cb863d3.vega-embed {
+  #altair-viz-390b3547f1f74f01b36a0152c8993fb7.vega-embed {
     width: 100%;
     display: flex;
   }
 
-  #altair-viz-81f174cc10814f3cbacef1a76cb863d3.vega-embed details,
-  #altair-viz-81f174cc10814f3cbacef1a76cb863d3.vega-embed details summary {
+  #altair-viz-390b3547f1f74f01b36a0152c8993fb7.vega-embed details,
+  #altair-viz-390b3547f1f74f01b36a0152c8993fb7.vega-embed details summary {
     position: relative;
   }
 </style>
-<div id="altair-viz-81f174cc10814f3cbacef1a76cb863d3"></div>
+<div id="altair-viz-390b3547f1f74f01b36a0152c8993fb7"></div>
 <script type="text/javascript">
   var VEGA_DEBUG = (typeof VEGA_DEBUG == "undefined") ? {} : VEGA_DEBUG;
   (function(spec, embedOpt){
     let outputDiv = document.currentScript.previousElementSibling;
-    if (outputDiv.id !== "altair-viz-81f174cc10814f3cbacef1a76cb863d3") {
-      outputDiv = document.getElementById("altair-viz-81f174cc10814f3cbacef1a76cb863d3");
+    if (outputDiv.id !== "altair-viz-390b3547f1f74f01b36a0152c8993fb7") {
+      outputDiv = document.getElementById("altair-viz-390b3547f1f74f01b36a0152c8993fb7");
     }
 
     const paths = {
@@ -8712,23 +8725,23 @@ These are the codes shared by both of the synthetic datasets.</p>
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[11]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <style>
-  #altair-viz-fd5e88de960f48eaa5383b21d2fb58a2.vega-embed {
+  #altair-viz-35b8c58a70f3434ca74c9cd35a05f5b3.vega-embed {
     width: 100%;
     display: flex;
   }
 
-  #altair-viz-fd5e88de960f48eaa5383b21d2fb58a2.vega-embed details,
-  #altair-viz-fd5e88de960f48eaa5383b21d2fb58a2.vega-embed details summary {
+  #altair-viz-35b8c58a70f3434ca74c9cd35a05f5b3.vega-embed details,
+  #altair-viz-35b8c58a70f3434ca74c9cd35a05f5b3.vega-embed details summary {
     position: relative;
   }
 </style>
-<div id="altair-viz-fd5e88de960f48eaa5383b21d2fb58a2"></div>
+<div id="altair-viz-35b8c58a70f3434ca74c9cd35a05f5b3"></div>
 <script type="text/javascript">
   var VEGA_DEBUG = (typeof VEGA_DEBUG == "undefined") ? {} : VEGA_DEBUG;
   (function(spec, embedOpt){
     let outputDiv = document.currentScript.previousElementSibling;
-    if (outputDiv.id !== "altair-viz-fd5e88de960f48eaa5383b21d2fb58a2") {
-      outputDiv = document.getElementById("altair-viz-fd5e88de960f48eaa5383b21d2fb58a2");
+    if (outputDiv.id !== "altair-viz-35b8c58a70f3434ca74c9cd35a05f5b3") {
+      outputDiv = document.getElementById("altair-viz-35b8c58a70f3434ca74c9cd35a05f5b3");
     }
 
     const paths = {
@@ -8818,23 +8831,23 @@ If you only have a couple of TREs, this isn't terribly useful, but once you have
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[12]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <style>
-  #altair-viz-705b51f05226492087cc5b61fac2b7f9.vega-embed {
+  #altair-viz-b77f90c96711433380d3fec4f48b2385.vega-embed {
     width: 100%;
     display: flex;
   }
 
-  #altair-viz-705b51f05226492087cc5b61fac2b7f9.vega-embed details,
-  #altair-viz-705b51f05226492087cc5b61fac2b7f9.vega-embed details summary {
+  #altair-viz-b77f90c96711433380d3fec4f48b2385.vega-embed details,
+  #altair-viz-b77f90c96711433380d3fec4f48b2385.vega-embed details summary {
     position: relative;
   }
 </style>
-<div id="altair-viz-705b51f05226492087cc5b61fac2b7f9"></div>
+<div id="altair-viz-b77f90c96711433380d3fec4f48b2385"></div>
 <script type="text/javascript">
   var VEGA_DEBUG = (typeof VEGA_DEBUG == "undefined") ? {} : VEGA_DEBUG;
   (function(spec, embedOpt){
     let outputDiv = document.currentScript.previousElementSibling;
-    if (outputDiv.id !== "altair-viz-705b51f05226492087cc5b61fac2b7f9") {
-      outputDiv = document.getElementById("altair-viz-705b51f05226492087cc5b61fac2b7f9");
+    if (outputDiv.id !== "altair-viz-b77f90c96711433380d3fec4f48b2385") {
+      outputDiv = document.getElementById("altair-viz-b77f90c96711433380d3fec4f48b2385");
     }
 
     const paths = {
