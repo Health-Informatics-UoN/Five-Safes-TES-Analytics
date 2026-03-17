@@ -11,7 +11,10 @@ Covers:
 - The Click CLI interface: expected options, their names, and defaults.
 
 All tests are unit tests — external dependencies (SQLAlchemy engine, database
-connections) are mocked. No real database or container is required.
+connections) are mocked. 
+
+There is one integration style test: TestClickCLI.test_main_function_with_contingency_table
+but we classify as unit test for our purposes as it requires no external infrastacture (uses SQlLite).
 """
 import json 
 import os
@@ -450,7 +453,6 @@ class TestClickCLI:
                 if os.path.exists(temp_filename):
                     os.remove(temp_filename)
     
-    @pytest.mark.integration
     def test_main_function_with_contingency_table(self):
         """Test main function with contingency table analysis."""
         user_query = "SELECT gender, race FROM patients"
