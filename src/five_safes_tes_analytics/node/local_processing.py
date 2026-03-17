@@ -219,11 +219,10 @@ class AcroTableMeans(BaseLocalProcessing):
             margins=True,
         )
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_folder = f"acro_output_{timestamp}"
-        acro_session.finalise(output_folder)
 
-        zip_path = shutil.make_archive("acro_output", "zip", output_folder)
+        acro_session.finalise(self.output_folder)
+
+        zip_path = shutil.make_archive("acro_output", "zip", self.output_folder)
         return {"acro_output_zip": zip_path, "acro_status": "finalised"}
 
 
@@ -266,11 +265,10 @@ class AcroTableCounts(BaseLocalProcessing):
             margins=True,
         )
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_folder = f"acro_output_{timestamp}"
-        acro_session.finalise(output_folder)
 
-        zip_path = shutil.make_archive("acro_output", "zip", output_folder)
+        acro_session.finalise(self.output_folder)
+
+        zip_path = shutil.make_archive("acro_output", "zip", self.output_folder)
         return {"acro_output_zip": zip_path, "acro_status": "finalised"}
 
 
