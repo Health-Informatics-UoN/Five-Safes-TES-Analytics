@@ -1,0 +1,66 @@
+name: Check Container Entrypoints
+
+on:
+  pull_request: 
+
+jobs:
+  bunny-run:
+    name: Run bunny wrapper entrypoint smoke test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Run bunny wrapper container
+        working-directory: docker/bunny-wrapper
+        run: |
+          docker compose -f test.compose.yml up --build -d
+          docker compose -f test.compose.yml wait bunny
+          CONTAINER_EXIT=$?
+          docker compose -f test.compose.yml down
+          exit $CONTAINER_EXIT
+          
+      - name: Verify bunny output
+        working-directory: docker/bunny-wrapper
+        run: | 
+          OUTPUT=$(cat test-output/output.json)
+          COUNT=$(echo "$OUTPUT" | jq '.queryResult' | jq '.count')
+          STATUS=$(echo "$OUTPUT" | jq '.status')
+
+          [ "$COUNT" = "40" ] || (echo "Expected count=40, got "$COUNT" && exit 1)
+          [ "$STATUS" = "ok" ] || (echo "Expected status=ok, got "$STATUS" && exit 1)
+
+  analytics-dev-run:
+    name: Run analytics dev entrypoint smoke test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Run analytics dev container
+        working-directory: docker/analytics-dev
+        run: |
+          docker compose -f test.compose.yml up --build -d
+          docker compose -f test.compose.yml wait analytics-dev
+          CONTAINER_EXIT=$?
+          docker compose -f test.compose.yml down
+          exit $CONTAINER_EXIT
+
+      - name: Verify analytics dev output 
+        working-directory: docker/analytics-dev
+        run: |
+          OUTPUT=$(cat test-output/output.json)
+          N=$(echo "$OUTPUT" | jq '.n')
+          TOTAL=$(echo "$OUTPUT" | jq '.total')
+
+          [ "$N" = "10836" ] || (echo "Expected n=10836, got "$N" && exit 1)
+          [ "$TOTAL" = "54109.0" ] || (echo "Expected total=54109.0, got "$TOTAL" && exit 1)
+            

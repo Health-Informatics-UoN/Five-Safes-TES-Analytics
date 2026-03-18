@@ -1,9 +1,5 @@
-import os
 import pytest
-import sys
 
-# Add the parent directory to the path so we can import our modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 @pytest.fixture(autouse=True)
 def setup_test_environment(request, monkeypatch):
@@ -26,4 +22,5 @@ def setup_test_environment(request, monkeypatch):
     monkeypatch.setenv('MINIO_STS_ENDPOINT', 'http://test-sts-endpoint.com')
     monkeypatch.setenv('5STES_TOKEN', 'test-token')
     monkeypatch.setenv('5STES_PROJECT', 'test-project')
+    monkeypatch.setenv('5STES_TRES', 'TRE-1')
     

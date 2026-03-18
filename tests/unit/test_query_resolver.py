@@ -1,21 +1,130 @@
-import pytest
-import json
-import tempfile
+"""
+Unit tests for five_safes_tes_analytics.node.query_resolver.
+
+Covers:
+- Building a PostgreSQL connection URL from environment variables. 
+- process_query() exiting with code 1 and writing an appropriate error message
+  for unsupported analysis types and database errors.
+- process_query() correctly writing JSON output for valid analysis types.
+- parse_connection_string() converting semicolon-format connection strings to
+  SQLAlchemy URLs, including special character encoding.
+- The Click CLI interface: expected options, their names, and defaults.
+
+All tests are unit tests — external dependencies (SQLAlchemy engine, database
+connections) are mocked. 
+
+There is one integration style test: TestClickCLI.test_main_function_with_contingency_table
+but we classify as unit test for our purposes as it requires no external infrastacture (uses SQlLite).
+"""
+import json 
 import os
-import sys
-from unittest.mock import Mock, patch
+import tempfile 
+from unittest.mock import patch, Mock 
+from urllib.parse import urlparse
 
-# Add the parent directory to the path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import pytest
 
-# Import the query_resolver module (docker package)
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'docker')))
-from five_safes_tes_analytics.node import query_resolver
+pytest.importorskip("sqlalchemy")
+
+from five_safes_tes_analytics.node import query_resolver  
 
 
-class TestQueryResolver:
-    """Test the query_resolver.py entry point functionality."""
-    
+class TestParseConnectionStringFromEnv:
+    """Tests for parse_connection_string(None) building URL from postgres* env vars."""
+
+    @patch.dict(os.environ, {
+        'postgresUsername': 'myuser',
+        'postgresPassword': 'mypass',
+        'postgresServer': 'db.example.com',
+        'postgresPort': '5432',
+        'postgresDatabase': 'omop',
+    }, clear=False)
+    def test_builds_url_from_env_when_connection_string_is_none(self):
+        """When connection_string is None, URL is built from postgres* env vars."""
+        result = query_resolver.parse_connection_string(None)
+        parsed = urlparse(result)
+        assert parsed.scheme == 'postgresql'
+        assert parsed.hostname == 'db.example.com'
+        assert parsed.port == 5432
+        assert parsed.path == '/omop' or parsed.path.rstrip('/') == 'omop'
+        assert parsed.username == 'myuser'
+        assert parsed.password == 'mypass'
+
+    @patch.dict(os.environ, {
+        'postgresUsername': 'user',
+        'postgresPassword': 'pass',
+        'postgresServer': 'host',
+        'postgresDatabase': 'dbname',
+    }, clear=False)
+    def test_port_defaults_to_5432_when_postgres_port_missing(self):
+        """When postgresPort is not set, port in URL is 5432."""
+        if 'postgresPort' in os.environ:
+            del os.environ['postgresPort']
+        result = query_resolver.parse_connection_string(None)
+        parsed = urlparse(result)
+        assert parsed.port == 5432
+
+    @patch.dict(os.environ, {
+        'postgresUsername': 'user@domain',
+        'postgresPassword': 'p@ss',
+        'postgresServer': 'host',
+        'postgresPort': '5432',
+        'postgresDatabase': 'db',
+    }, clear=False)
+    def test_special_chars_in_credentials_are_encoded(self):
+        """Username and password from env are URL-encoded in the connection string.
+        
+        If a special character (in this case @) appears in the user/password then this should be encoded in the url
+        via percent-encoding. 
+        """
+        result = query_resolver.parse_connection_string(None)
+        parsed = urlparse(result)
+        assert parsed.scheme == 'postgresql'
+        assert parsed.password == 'p%40ss'
+        assert parsed.username == 'user%40domain'
+
+    def test_missing_required_env_raises(self):
+        """When required postgres* env vars are missing/empty, validate_environment raises ValueError."""
+        with patch.dict(os.environ, {
+            'postgresUsername': '',
+            'postgresPassword': '',
+            'postgresServer': '',
+            'postgresDatabase': '',
+        }, clear=False):
+            with pytest.raises(ValueError) as exc_info:
+                query_resolver.validate_environment()
+        assert "Missing required env var" in str(exc_info.value)
+        assert "postgres" in str(exc_info.value)
+
+
+class TestValidateEnvironment: 
+    DB_CONN = "postgresql://user:pass@localhost:5432/db"
+    USER_QUERY = "SELECT * FROM users"
+
+    @patch('five_safes_tes_analytics.node.query_resolver.create_engine')
+    def test_process_query_with_unsupported_analysis_type(self, mock_create_engine):
+        """Unsupported analysis type should cause sys.exit(1)."""
+        with pytest.raises(SystemExit) as exc_info:
+            query_resolver.process_query(self.USER_QUERY, "unsupported", self.DB_CONN, "output", "json")
+        assert exc_info.value.code == 1
+
+    @patch('five_safes_tes_analytics.node.query_resolver.create_engine')
+    def test_process_query_with_none_analysis_type(self, mock_create_engine):
+        """None analysis type should cause sys.exit(1)."""
+        with pytest.raises(SystemExit) as exc_info:
+            query_resolver.process_query(self.USER_QUERY, None, self.DB_CONN, "output", "json")
+        assert exc_info.value.code == 1
+
+    @patch('five_safes_tes_analytics.node.query_resolver.create_engine')
+    def test_process_query_unsupported_analysis_type_error_message(self, mock_create_engine, capsys):
+        """Error message should mention the unsupported analysis type."""
+        with pytest.raises(SystemExit):
+            query_resolver.process_query(self.USER_QUERY, "unsupported", self.DB_CONN, "output", "json")
+        captured = capsys.readouterr()
+        assert "Unsupported analysis type" in captured.err
+
+
+class TestProcessQuery: 
     def test_decimal_encoder(self):
         """Test DecimalEncoder for JSON serialization."""
         from decimal import Decimal
@@ -52,7 +161,7 @@ class TestQueryResolver:
         output_format = "json"
         
         # Mock the database engine and connection
-        with patch('query_resolver.create_engine') as mock_create_engine:
+        with patch('five_safes_tes_analytics.node.query_resolver.create_engine') as mock_create_engine:
             mock_engine = Mock()
             mock_conn = Mock()
             
@@ -104,6 +213,70 @@ class TestQueryResolver:
                     os.remove(output_file)
                 if os.path.exists(temp_filename):
                     os.remove(temp_filename)
+    
+    def test_process_query_writes_json_output(self):
+        user_query = "SELECT value_as_number FROM measurements"
+        analysis = "mean"
+        db_connection = "sqlite:///:memory:"
+        output_filename = "test_output"
+        
+        # Test JSON output
+        with patch('five_safes_tes_analytics.node.query_resolver.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_conn = Mock()
+            
+            # Create a proper mock that behaves like engine.Result
+            from sqlalchemy.engine import Result
+            mock_result = Mock(spec=Result)
+            mock_result.keys.return_value = ["n", "total"]
+            mock_result.fetchall.return_value = [(100, 1500.5)]
+            
+            # Set up context manager properly
+            mock_connection_context = Mock()
+            mock_connection_context.__enter__ = Mock(return_value=mock_conn)
+            mock_connection_context.__exit__ = Mock(return_value=None)
+            
+            mock_create_engine.return_value = mock_engine
+            mock_engine.connect.return_value = mock_connection_context
+            mock_conn.execute.return_value = mock_result
+            
+            output_file = f"{output_filename}.json"
+            try:
+                query_resolver.process_query(user_query, analysis, db_connection, output_filename, "json")
+                
+                assert os.path.exists(output_file)
+                
+                with open(output_file, 'r') as f:
+                    result = json.load(f)
+                
+                assert isinstance(result, dict)
+                
+            finally:
+                if os.path.exists(output_file):
+                    os.remove(output_file)
+    
+    def test_process_query_exits_on_database_error(self):
+        user_query = "SELECT * FROM nonexistent_table"
+        analysis = "mean"
+        db_connection = "sqlite:///:memory:"
+        output_filename = "test_output"
+        output_format = "json"
+        
+        # Mock database error
+        with patch('five_safes_tes_analytics.node.query_resolver.create_engine') as mock_create_engine, \
+             patch('five_safes_tes_analytics.node.query_resolver.click.echo') as mock_echo:
+            mock_engine = Mock()
+            mock_engine.connect.side_effect = Exception("Database connection failed")
+            mock_create_engine.return_value = mock_engine
+            
+            # process_query catches all exceptions and calls sys.exit(1)
+            with pytest.raises(SystemExit):
+                query_resolver.process_query(user_query, analysis, db_connection, output_filename, output_format)
+            
+            # Verify the error message was printed
+            mock_echo.assert_called_once()
+            error_call = mock_echo.call_args
+            assert "Database connection failed" in str(error_call)
 
 
 class TestConnectionStringParsing:
@@ -133,7 +306,7 @@ class TestConnectionStringParsing:
         output_filename = "conn_parse_it"
         output_format = "json"
 
-        with patch('query_resolver.create_engine') as mock_create_engine:
+        with patch('five_safes_tes_analytics.node.query_resolver.create_engine') as mock_create_engine:
             mock_engine = Mock()
             mock_conn = Mock()
 
@@ -209,7 +382,7 @@ class TestClickCLI:
         output_format = "json"
         
         # process_query catches all exceptions and calls sys.exit(1)
-        with patch('query_resolver.click.echo') as mock_echo:
+        with patch('five_safes_tes_analytics.node.query_resolver.click.echo') as mock_echo:
             with pytest.raises(SystemExit):
                 query_resolver.process_query(user_query, analysis, db_connection, output_filename, output_format)
             
@@ -227,7 +400,7 @@ class TestClickCLI:
         output_format = "json"
         
         # Mock the database engine and connection
-        with patch('query_resolver.create_engine') as mock_create_engine:
+        with patch('five_safes_tes_analytics.node.query_resolver.create_engine') as mock_create_engine:
             mock_engine = Mock()
             mock_conn = Mock()
             
@@ -280,7 +453,6 @@ class TestClickCLI:
                 if os.path.exists(temp_filename):
                     os.remove(temp_filename)
     
-    @pytest.mark.integration
     def test_main_function_with_contingency_table(self):
         """Test main function with contingency table analysis."""
         user_query = "SELECT gender, race FROM patients"
@@ -384,161 +556,3 @@ class TestClickCLI:
             if os.path.exists(temp_db_path):
                 os.remove(temp_db_path)
 
-
-class TestDockerContainerScenarios:
-    """Test scenarios that would occur in a Docker container."""
-    
-    def test_docker_entrypoint_with_click_args(self):
-        """Test Docker entrypoint with Click command line arguments."""
-        # This would simulate: docker run image --user-query "SELECT * FROM users" --analysis mean
-        
-        with patch('query_resolver.main') as mock_main:
-            # Simulate command line arguments
-            with patch('sys.argv', ['query_resolver.py', '--user-query', 'SELECT * FROM users', '--analysis', 'mean']):
-                query_resolver.main()
-                mock_main.assert_called_once()
-    
-    def test_docker_entrypoint_without_args(self):
-        """Test Docker entrypoint without arguments (uses test values)."""
-        # This would simulate: docker run image (no args)
-        
-        with patch('query_resolver.main') as mock_main:
-            # Simulate no command line arguments
-            with patch('sys.argv', ['query_resolver.py']):
-                query_resolver.main()
-                mock_main.assert_called_once()
-    
-    def test_docker_environment_variables(self):
-        """Test Docker container with environment variables."""
-        # Simulate environment variables that might be passed to Docker
-        env_vars = {
-            'DB_CONNECTION': 'postgresql://user:pass@db:5432/database',
-            'ANALYSIS_TYPE': 'mean',
-            'USER_QUERY': 'SELECT value_as_number FROM measurements'
-        }
-        
-        with patch.dict(os.environ, env_vars):
-            with patch('query_resolver.main') as mock_main:
-                # Simulate command line with env vars
-                with patch('sys.argv', [
-                    'query_resolver.py',
-                    '--user-query', os.environ['USER_QUERY'],
-                    '--analysis', os.environ['ANALYSIS_TYPE'],
-                    '--db-connection', os.environ['DB_CONNECTION']
-                ]):
-                    query_resolver.main()
-                    mock_main.assert_called_once()
-    
-    def test_docker_output_formats(self):
-        """Test Docker container with different output formats."""
-        user_query = "SELECT value_as_number FROM measurements"
-        analysis = "mean"
-        db_connection = "sqlite:///:memory:"
-        output_filename = "test_output"
-        
-        # Test JSON output
-        with patch('query_resolver.create_engine') as mock_create_engine:
-            mock_engine = Mock()
-            mock_conn = Mock()
-            
-            # Create a proper mock that behaves like engine.Result
-            from sqlalchemy.engine import Result
-            mock_result = Mock(spec=Result)
-            mock_result.keys.return_value = ["n", "total"]
-            mock_result.fetchall.return_value = [(100, 1500.5)]
-            
-            # Set up context manager properly
-            mock_connection_context = Mock()
-            mock_connection_context.__enter__ = Mock(return_value=mock_conn)
-            mock_connection_context.__exit__ = Mock(return_value=None)
-            
-            mock_create_engine.return_value = mock_engine
-            mock_engine.connect.return_value = mock_connection_context
-            mock_conn.execute.return_value = mock_result
-            
-            output_file = f"{output_filename}.json"
-            try:
-                query_resolver.process_query(user_query, analysis, db_connection, output_filename, "json")
-                
-                assert os.path.exists(output_file)
-                
-                with open(output_file, 'r') as f:
-                    result = json.load(f)
-                
-                assert isinstance(result, dict)
-                
-            finally:
-                if os.path.exists(output_file):
-                    os.remove(output_file)
-    
-    def test_docker_error_handling(self):
-        """Test Docker container error handling."""
-        user_query = "SELECT * FROM nonexistent_table"
-        analysis = "mean"
-        db_connection = "sqlite:///:memory:"
-        output_filename = "test_output"
-        output_format = "json"
-        
-        # Mock database error
-        with patch('query_resolver.create_engine') as mock_create_engine, \
-             patch('query_resolver.click.echo') as mock_echo:
-            mock_engine = Mock()
-            mock_engine.connect.side_effect = Exception("Database connection failed")
-            mock_create_engine.return_value = mock_engine
-            
-            # process_query catches all exceptions and calls sys.exit(1)
-            with pytest.raises(SystemExit):
-                query_resolver.process_query(user_query, analysis, db_connection, output_filename, output_format)
-            
-            # Verify the error message was printed
-            mock_echo.assert_called_once()
-            error_call = mock_echo.call_args
-            assert "Database connection failed" in str(error_call)
-
-
-class TestDockerBuildAndRun:
-    """Test Docker container build and run scenarios."""
-    
-    def test_dockerfile_structure(self):
-        """Test that Dockerfile has correct structure."""
-        dockerfile_path = os.path.join(os.path.dirname(__file__), '..', 'docker', 'Dockerfile')
-        
-        if os.path.exists(dockerfile_path):
-            with open(dockerfile_path, 'r') as f:
-                dockerfile_content = f.read()
-            
-            # Check for required components
-            assert "FROM python:3.12" in dockerfile_content
-            assert "COPY query_resolver.py" in dockerfile_content
-            assert "COPY local_processing.py" in dockerfile_content
-            assert "RUN pip install" in dockerfile_content
-            assert "ENTRYPOINT" in dockerfile_content
-            assert "query_resolver.py" in dockerfile_content
-    
-    def test_required_files_present(self):
-        """Test that all required files are present for Docker build."""
-        container_dir = os.path.join(os.path.dirname(__file__), '..', 'docker')
-        
-        required_files = ['Dockerfile', 'query_resolver.py', 'local_processing.py']
-        
-        for file in required_files:
-            file_path = os.path.join(container_dir, file)
-            assert os.path.exists(file_path), f"Required file {file} not found"
-    
-    def test_docker_dependencies(self):
-        """Test that Docker container has correct dependencies."""
-        dockerfile_path = os.path.join(os.path.dirname(__file__), '..', 'docker', 'Dockerfile')
-        
-        if os.path.exists(dockerfile_path):
-            with open(dockerfile_path, 'r') as f:
-                dockerfile_content = f.read()
-            
-            # Check for required Python packages
-            required_packages = ['click', 'sqlalchemy', 'psycopg2-binary', 'numpy', 'tdigest']
-            
-            for package in required_packages:
-                assert package in dockerfile_content, f"Required package {package} not found in Dockerfile"
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

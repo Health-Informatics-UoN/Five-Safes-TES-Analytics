@@ -5,8 +5,8 @@ import os
 from string import Template 
 from typing import List, Dict, Any 
 
-from analytics_tes import AnalyticsTES
-from analysis_runner import AnalysisRunner 
+from five_safes_tes_analytics.clients.analytics_tes_client import AnalyticsTES
+from five_safes_tes_analytics.runners.analysis_runner import AnalysisRunner 
 
 
 def run_mean_analysis_example(analysis_runner: AnalysisRunner, concept_id: int, tres: List[str] = None) -> Dict[str, Any]:
