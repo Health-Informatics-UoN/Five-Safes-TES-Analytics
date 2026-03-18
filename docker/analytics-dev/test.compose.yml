@@ -11,7 +11,7 @@ services:
       retries: 5
 
   omop-lite:
-    image: ghcr.io/health-informatics-uon/omop-lite
+    image: ghcr.io/health-informatics-uon/omop-lite:sha-c6054ef
     depends_on:
       db:
         condition: service_healthy
@@ -20,18 +20,26 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: omop
       SYNTHETIC: true
-  
-  bunny:
-    build: .
+      SYNTHETIC_NUMBER: 1000
+
+  analytics-dev: 
+    build:
+      context: ../../
+      dockerfile: docker/analytics-dev/Dockerfile
+    command:
+      - "--user-query"
+      - "SELECT value_as_number FROM measurement WHERE measurement_concept_id = 43055141 AND value_as_number IS NOT NULL"
+      - "--analysis"
+      - "mean"
+      - "--output-filename"
+      - "/tmp/output/output"
+      - "--output-format"
+      - "json"
+    volumes:
+      - ./test-output:/tmp/output
     depends_on:
       omop-lite:
         condition: service_completed_successfully
-    command:
-      - "--body /var/queries/availability.json"
-      - "--output /tmp/output/output.json"
-    volumes:
-      - ./availability.json:/var/queries/availability.json
-      - ./test-output:/tmp/output 
     environment:
       postgresServer: db
       postgresPort: 5432
@@ -39,4 +47,3 @@ services:
       postgresDatabase: omop
       postgresUsername: postgres
       postgresPassword: postgres
-      BUNNY_LOGGER_LEVEL: DEBUG

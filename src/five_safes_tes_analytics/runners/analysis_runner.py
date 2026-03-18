@@ -12,7 +12,10 @@ from five_safes_tes_analytics.runners.analysis_orchestrator import AnalysisOrche
 
 
 class AnalysisRunner:
-    def __init__(self, tes_client: BaseTESClient = AnalyticsTES(), project: str = None):
+    def __init__(self, tes_client: BaseTESClient = None, project: str = None):
+        if tes_client is None: 
+            tes_client = AnalyticsTES()
+
         self.analysis_orchestrator = None 
         self.tes_client = tes_client
         self.project = project 

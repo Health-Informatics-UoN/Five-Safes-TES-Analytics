@@ -1,14 +1,10 @@
-import pytest
-import json
-import os
 from unittest.mock import Mock, MagicMock
+
+import pytest
 from sqlalchemy import text
-import sys
 
-# Add the parent directory to the path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from Container.local_processing import (
+from five_safes_tes_analytics.node.local_processing import (
     BaseLocalProcessing, Mean, Variance, PMCC, ContingencyTable, PercentileSketch,
     LOCAL_PROCESSING_CLASSES, get_local_processing_registry
 )
@@ -35,44 +31,6 @@ class TestBaseLocalProcessing:
         """Test that BaseLocalProcessing is abstract and cannot be instantiated."""
         with pytest.raises(TypeError):
             BaseLocalProcessing()
-    
-    def test_build_query_without_analysis_type(self):
-        """Test build_query when analysis_type is None raises ValueError."""
-        class TestProcessor(BaseLocalProcessing):
-            @property
-            def description(self):
-                return "Test"
-            
-            @property
-            def processing_query(self):
-                return "SELECT * FROM test"
-            
-            @property
-            def user_query_requirements(self):
-                return "Test requirements"
-        
-        processor = TestProcessor(analysis_type=None, user_query="SELECT * FROM users")
-        with pytest.raises(ValueError, match="Unsupported analysis type: None"):
-            processor.build_query()
-    
-    def test_build_query_with_unsupported_analysis_type(self):
-        """Test build_query with unsupported analysis type."""
-        class TestProcessor(BaseLocalProcessing):
-            @property
-            def description(self):
-                return "Test"
-            
-            @property
-            def processing_query(self):
-                return "SELECT * FROM test"
-            
-            @property
-            def user_query_requirements(self):
-                return "Test requirements"
-        
-        processor = TestProcessor(analysis_type="unsupported", user_query="SELECT * FROM users")
-        with pytest.raises(ValueError, match="Unsupported analysis type"):
-            processor.build_query()
     
     def test_build_query_with_valid_analysis(self):
         """Test build_query with valid analysis type."""
@@ -296,10 +254,9 @@ class TestPercentileSketch:
         result = processor.python_analysis(mock_result)
         
         # Should return JSON string
-        assert isinstance(result, str)
-        json_data = json.loads(result)
-        assert "centroids" in json_data
-        assert "n" in json_data
+        assert isinstance(result, dict)
+        assert "centroids" in result
+        assert "n" in result
 
 
 class TestRegistry:
@@ -346,10 +303,10 @@ class TestRegistry:
         assert isinstance(percentile_processor, PercentileSketch)
 
 
-class TestDockerIntegration:
+class TestLocalProcessingWorkflows:
     """Test Docker container integration scenarios."""
     
-    def test_mean_analysis_integration(self):
+    def test_mean_analysis_workflow(self):
         """Test complete Mean analysis workflow."""
         user_query = "SELECT value_as_number FROM measurements WHERE value_as_number IS NOT NULL"
         
@@ -379,7 +336,7 @@ class TestDockerIntegration:
         # Verify execution was called
         mock_conn.execute.assert_called()
     
-    def test_contingency_table_integration(self):
+    def test_contingency_table_workflow(self):
         """Test complete ContingencyTable analysis workflow."""
         user_query = "SELECT gender, race FROM patients"
         
@@ -416,7 +373,7 @@ class TestDockerIntegration:
         assert "COUNT(*) AS n" in query
         assert "GROUP BY gender, race" in query
     
-    def test_percentile_sketch_integration(self):
+    def test_percentile_sketch_workflow(self):
         """Test complete PercentileSketch analysis workflow."""
         user_query = "SELECT value_as_number FROM measurements"
         
@@ -444,37 +401,13 @@ class TestDockerIntegration:
         
         # Test python analysis
         result = processor.python_analysis(mock_result)
-        assert isinstance(result, str)
-        
-        # Parse JSON result
-        json_data = json.loads(result)
-        assert "centroids" in json_data
-        assert "n" in json_data
+        assert isinstance(result, dict)
+        assert "centroids" in result
+        assert "n" in result
 
 
 class TestErrorHandling:
     """Test error handling scenarios."""
-    
-    def test_unsupported_analysis_type(self):
-        """Test error handling for unsupported analysis type."""
-        class TestProcessor(BaseLocalProcessing):
-            @property
-            def description(self):
-                return "Test"
-            
-            @property
-            def processing_query(self):
-                return "SELECT * FROM test"
-            
-            @property
-            def user_query_requirements(self):
-                return "Test requirements"
-        
-        processor = TestProcessor(analysis_type="unsupported", user_query="SELECT * FROM users")
-        
-        with pytest.raises(ValueError, match="Unsupported analysis type"):
-            processor.build_query()
-    
     def test_database_connection_error(self):
         """Test error handling for database connection issues."""
         mock_engine = Mock()

@@ -12,23 +12,29 @@ import os
 import pytest
 from pathlib import Path
 
+
 @pytest.mark.integration
 def test_docker_build():
     """Test Docker container build."""
     print("Testing Docker container build...")
     
-    container_dir = Path(__file__).parent.parent / "docker"
+    # Assumes file is in <repo_root>/tests/integration 
+    repo_root = Path(__file__).parent.parent.parent
+    container_dir = repo_root / "docker" / "analytics-dev"
     if not container_dir.exists():
         pytest.fail(f"Docker directory {container_dir} not found")
     
     try:
-        # Change to container directory
+        # Make sure in repo root 
         original_cwd = os.getcwd()
-        os.chdir(container_dir)
+        os.chdir(repo_root)
         
         # Build Docker image
         result = subprocess.run([
-            "docker", "build", "-t", "tre-fx-local-processing", "."
+            "docker", "build", 
+            "-f", str(container_dir / "Dockerfile"),
+            "-t", "analytics-dev:local-test", 
+            "."
         ], capture_output=True, text=True)
         
         print(result.stdout)
@@ -65,7 +71,7 @@ def test_docker_run():
             "-e", f"postgresServer={server}",
             "-e", f"postgresPort={port}",
             "-e", f"postgresDatabase={database}",
-            "tre-fx-local-processing",
+            "analytics-dev:local-test",
             "--user-query", "SELECT 1 as value_as_number UNION SELECT 2 UNION SELECT 3",
             "--analysis", "mean",
             "--output-filename", "test_output",
@@ -106,7 +112,7 @@ def test_docker_with_postgres():
             "-e", f"postgresServer={server}",
             "-e", f"postgresPort={port}",
             "-e", f"postgresDatabase={database}",
-            "tre-fx-local-processing",
+            "analytics-dev:local-test",
             "--user-query", "SELECT COUNT(*) FROM information_schema.tables",
             "--analysis", "mean",
             "--output-filename", "test_output",
