@@ -1,15 +1,16 @@
 import pytest
 import json
 import os
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 from sqlalchemy import text
 import sys
 
 # Add the parent directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from Container.local_processing import (
+from five_safes_tes_analytics.node.local_processing import (
     BaseLocalProcessing, Mean, Variance, PMCC, ContingencyTable, PercentileSketch,
+    AcroTableMeans, AcroTableCounts,
     LOCAL_PROCESSING_CLASSES, get_local_processing_registry
 )
 
@@ -499,6 +500,119 @@ class TestErrorHandling:
         
         with pytest.raises(ValueError, match="No columns found in user query"):
             processor.get_columns_from_user_query()
+
+
+class TestAcroTableMeans:
+    """Test the AcroTableMeans processing class."""
+
+    def test_properties(self):
+        processor = AcroTableMeans()
+        assert processor.analysis_type == "acro_crosstab_mean"
+        assert "mean" in processor.description.lower()
+        assert processor.processing_query is None
+        assert "3 columns" in processor.user_query_requirements
+
+    def test_python_analysis(self):
+        mock_result = Mock()
+        mock_result.fetchall.return_value = [
+            ("not_recom", "convenient", 3.1),
+            ("priority", "inconv", 2.9),
+            ("very_recom", "convenient", 3.3),
+        ]
+        mock_result.keys.return_value = ["recommendation", "finance", "children"]
+
+        mock_acro_instance = Mock()
+        mock_acro_instance.finalise.return_value = None
+        mock_acro_instance.crosstab.return_value.to_dict.return_value = {"col_a": {"row_1": 3.1}}
+
+        with patch("five_safes_tes_analytics.node.local_processing.acro_module.ACRO", return_value=mock_acro_instance), \
+             patch("five_safes_tes_analytics.node.local_processing.shutil.make_archive", return_value="/tmp/acro_output.zip"):
+            processor = AcroTableMeans()
+            result = processor.python_analysis(mock_result)
+
+        assert isinstance(result, dict)
+        assert "acro_output_zip" in result
+        assert result["acro_status"] == "finalised"
+        assert "table" in result
+        mock_acro_instance.crosstab.assert_called_once()
+        mock_acro_instance.finalise.assert_called_once()
+
+    def test_crosstab_called_with_mean_aggfunc(self):
+        mock_result = Mock()
+        mock_result.fetchall.return_value = [("A", "X", 1.0), ("B", "Y", 2.0)]
+        mock_result.keys.return_value = ["idx", "col", "val"]
+
+        mock_acro_instance = Mock()
+
+        with patch("five_safes_tes_analytics.node.local_processing.acro_module.ACRO", return_value=mock_acro_instance), \
+             patch("five_safes_tes_analytics.node.local_processing.shutil.make_archive", return_value="x.zip"):
+            AcroTableMeans().python_analysis(mock_result)
+
+        call_kwargs = mock_acro_instance.crosstab.call_args
+        assert call_kwargs.kwargs.get("aggfunc") == "mean"
+        assert call_kwargs.kwargs.get("margins") is True
+
+    def test_registered_in_registry(self):
+        registry = get_local_processing_registry()
+        assert "acro_crosstab_mean" in registry
+        assert registry["acro_crosstab_mean"] is AcroTableMeans
+
+
+class TestAcroTableCounts:
+    """Test the AcroTableCounts processing class."""
+
+    def test_properties(self):
+        processor = AcroTableCounts()
+        assert processor.analysis_type == "acro_crosstab_count"
+        assert "count" in processor.description.lower()
+        assert processor.processing_query is None
+        assert "2 columns" in processor.user_query_requirements
+
+    def test_python_analysis(self):
+        mock_result = Mock()
+        mock_result.fetchall.return_value = [
+            ("not_recom", "convenient"),
+            ("priority", "inconv"),
+        ]
+        mock_result.keys.return_value = ["recommendation", "finance"]
+
+        mock_acro_instance = Mock()
+        mock_acro_instance.finalise.return_value = None
+        mock_acro_instance.crosstab.return_value.to_dict.return_value = {"col_a": {"row_1": 2}}
+
+        with patch("five_safes_tes_analytics.node.local_processing.acro_module.ACRO", return_value=mock_acro_instance), \
+             patch("five_safes_tes_analytics.node.local_processing.shutil.make_archive", return_value="/tmp/acro_output.zip"):
+            processor = AcroTableCounts()
+            result = processor.python_analysis(mock_result)
+
+        assert isinstance(result, dict)
+        assert "acro_output_zip" in result
+        assert result["acro_status"] == "finalised"
+        assert "table" in result
+        mock_acro_instance.crosstab.assert_called_once()
+        mock_acro_instance.finalise.assert_called_once()
+
+    def test_crosstab_called_without_values(self):
+        mock_result = Mock()
+        mock_result.fetchall.return_value = [("A", "X"), ("B", "Y")]
+        mock_result.keys.return_value = ["idx", "col"]
+
+        mock_acro_instance = Mock()
+
+        with patch("five_safes_tes_analytics.node.local_processing.acro_module.ACRO", return_value=mock_acro_instance), \
+             patch("five_safes_tes_analytics.node.local_processing.shutil.make_archive", return_value="x.zip"):
+            AcroTableCounts().python_analysis(mock_result)
+
+        call_kwargs = mock_acro_instance.crosstab.call_args
+        # count crosstab should not pass values= or aggfunc= keyword args
+        assert "values" not in (call_kwargs.kwargs or {})
+        assert "aggfunc" not in (call_kwargs.kwargs or {})
+        assert call_kwargs.kwargs.get("margins") is True
+
+    def test_registered_in_registry(self):
+        registry = get_local_processing_registry()
+        assert "acro_crosstab_count" in registry
+        assert registry["acro_crosstab_count"] is AcroTableCounts
 
 
 if __name__ == "__main__":

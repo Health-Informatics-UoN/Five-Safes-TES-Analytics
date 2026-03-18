@@ -183,7 +183,12 @@ class AcroTableMeans(BaseLocalProcessing):
 
     Converts the SQL result to a pandas DataFrame and runs acro.crosstab with
     aggfunc="mean". ACRO applies SDC rules (threshold, p-ratio, nk-rule) and
-    marks any suppressed cells. Output is finalised to a zip folder.
+    marks any suppressed cells. Output is finalised to a zip archive.
+
+    SQL must return exactly 3 columns in order:
+      1. index_var  — row categories
+      2. col_var    — column categories
+      3. value_var  — numeric values to average
     """
 
     analysis_type = "acro_crosstab_mean"
@@ -211,7 +216,7 @@ class AcroTableMeans(BaseLocalProcessing):
         df = pd.DataFrame(rows, columns=columns)
 
         acro_session = acro_module.ACRO(suppress=True)
-        acro_session.crosstab(
+        table = acro_session.crosstab(
             df[columns[0]],
             df[columns[1]],
             values=df[columns[2]],
@@ -224,7 +229,11 @@ class AcroTableMeans(BaseLocalProcessing):
         acro_session.finalise(output_folder)
 
         zip_path = shutil.make_archive("acro_output", "zip", output_folder)
-        return {"acro_output_zip": zip_path, "acro_status": "finalised"}
+        return {
+            "acro_output_zip": zip_path,
+            "acro_status": "finalised",
+            "table": table.to_dict(),
+        }
 
 
 class AcroTableCounts(BaseLocalProcessing):
@@ -233,7 +242,10 @@ class AcroTableCounts(BaseLocalProcessing):
 
     Like AcroTableMeans but counts occurrences rather than averaging a value,
     so no numeric column is required.
-    
+
+    SQL must return exactly 2 columns in order:
+      1. index_var  — row categories
+      2. col_var    — column categories
     """
 
     analysis_type = "acro_crosstab_count"
@@ -260,7 +272,7 @@ class AcroTableCounts(BaseLocalProcessing):
         df = pd.DataFrame(rows, columns=columns)
 
         acro_session = acro_module.ACRO(suppress=True)
-        acro_session.crosstab(
+        table = acro_session.crosstab(
             df[columns[0]],
             df[columns[1]],
             margins=True,
@@ -271,7 +283,11 @@ class AcroTableCounts(BaseLocalProcessing):
         acro_session.finalise(output_folder)
 
         zip_path = shutil.make_archive("acro_output", "zip", output_folder)
-        return {"acro_output_zip": zip_path, "acro_status": "finalised"}
+        return {
+            "acro_output_zip": zip_path,
+            "acro_status": "finalised",
+            "table": table.to_dict(),
+        }
 
 
 def get_local_processing_registry():
