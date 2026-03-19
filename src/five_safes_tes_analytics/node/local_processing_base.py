@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from sqlalchemy.engine import Result
+import pathlib
 
 
 class BaseLocalProcessing(ABC):
@@ -10,11 +11,12 @@ class BaseLocalProcessing(ABC):
     TREs. The class handles SQL query building and optional Python-side analysis,
     returning results that can be aggregated across multiple TREs.
     """
-    def __init__(self, analysis_type: str = None, user_query: str = None, engine = None):
+    def __init__(self, analysis_type: str = None, user_query: str = None, engine = None, output_folder: pathlib.Path = pathlib.Path("/outputs")):
         # Use class attribute as default if no analysis_type provided
         self.analysis_type = analysis_type if analysis_type is not None else getattr(self.__class__, 'analysis_type', None)
         self.user_query = user_query
         self.engine = engine
+        self.output_folder = output_folder
 
     @property
     @abstractmethod

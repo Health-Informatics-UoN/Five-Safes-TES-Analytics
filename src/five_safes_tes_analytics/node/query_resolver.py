@@ -6,7 +6,7 @@ import sys
 import re
 import os
 from urllib.parse import quote_plus
-
+import pathlib
 from . import local_processing
 
 
@@ -137,7 +137,8 @@ def process_query(user_query, analysis, db_connection, output_filename, output_f
     #### Setup
     try:    
         output_filename = output_filename + '.' + output_format
-        
+        output_folder = pathlib.Path(output_filename).parent
+
         # Parse and convert connection string to SQLAlchemy format if needed
         sqlalchemy_connection = parse_connection_string(db_connection)
         
@@ -149,7 +150,7 @@ def process_query(user_query, analysis, db_connection, output_filename, output_f
             ## This is temporary - we'll have to send the error to the client.
             raise ValueError(f"Unsupported analysis type: {analysis}")
 
-        processor = registry[analysis](user_query=user_query, engine=sql_engine)
+        processor = registry[analysis](user_query=user_query, engine=sql_engine, output_folder=output_folder)
 
 
         query = processor.build_query()
