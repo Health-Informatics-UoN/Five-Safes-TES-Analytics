@@ -1,6 +1,7 @@
 from sqlalchemy import text
 from tdigest import TDigest
 import math
+import textwrap
 
 from .local_processing_base import BaseLocalProcessing
 
@@ -21,11 +22,13 @@ class Mean(BaseLocalProcessing):
 
     @property
     def processing_query(self):
-        return """
-SELECT
-  COUNT(*) AS n,
-  SUM(value_as_number) AS total
-FROM user_query;"""
+        return textwrap.dedent("""
+                SELECT
+                    COUNT(*) AS n,
+                    SUM(value_as_number) AS total
+                FROM 
+                    user_query;
+                               """)
 
     @property
     def user_query_requirements(self):
@@ -48,12 +51,15 @@ class Variance(BaseLocalProcessing):
 
     @property
     def processing_query(self):
-        return """
-SELECT
-  COUNT(*) AS n,
-  SUM(value_as_number * value_as_number) AS sum_x2,
-  SUM(value_as_number) AS total
-FROM user_query;"""
+        
+        return textwrap.dedent("""
+            SELECT
+                COUNT(*) AS n,
+                SUM(value_as_number * value_as_number) AS sum_x2,
+                SUM(value_as_number) AS total
+            FROM 
+                user_query;
+                               """)
 
     @property
     def user_query_requirements(self):
@@ -77,15 +83,17 @@ class PMCC(BaseLocalProcessing):
 
     @property
     def processing_query(self):
-        return """
-SELECT
-  COUNT(*) AS n,
-  SUM(x) AS sum_x,
-  SUM(y) AS sum_y,
-  SUM(x * x) AS sum_x2,
-  SUM(y * y) AS sum_y2,
-  SUM(x * y) AS sum_xy
-FROM user_query;"""
+        return textwrap.dedent("""
+            SELECT
+                COUNT(*) AS n,
+                SUM(x) AS sum_x,
+                SUM(y) AS sum_y,
+                SUM(x * x) AS sum_x2,
+                SUM(y * y) AS sum_y2,
+                SUM(x * y) AS sum_xy
+            FROM 
+                user_query;
+                               """)
 
     @property
     def user_query_requirements(self):
@@ -125,13 +133,18 @@ class ContingencyTable(BaseLocalProcessing):
         group_by = ", ".join(categorical_columns)
         select = ", ".join(categorical_columns)
         query = f"""
-SELECT
-  {select},
-  COUNT(*) AS n
-FROM user_query
-GROUP BY {group_by}
-ORDER BY {group_by};"""
-        return query
+                SELECT
+                    {select},
+                    COUNT(*) AS n
+                FROM 
+                    user_query
+                GROUP BY 
+                    {group_by}
+                ORDER BY 
+                    {group_by};
+                """
+        
+        return textwrap.dedent(query)
 
     @property
     def user_query_requirements(self):
