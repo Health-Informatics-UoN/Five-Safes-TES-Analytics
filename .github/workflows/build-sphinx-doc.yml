@@ -1,0 +1,68 @@
+name: build_sphinx_docs
+
+on:
+  push:
+    branches:
+      - Sphinx-API-docs
+
+jobs:
+  build_docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies (uv)
+      run: |
+        uv sync
+
+    - name: Install docs dependencies (uv)
+      run: |
+        uv sync --group docs
+
+    - name: Remove old .rst files (keep index)
+      run: |
+        find docs/source -type f -name "*.rst" ! -name "index.rst" -delete
+
+    - name: Generate .rst files from package
+      run: |
+        uv run sphinx-apidoc -o docs/source/ src/
+
+    - name: Build Sphinx HTML documentation
+      run: |
+        uv run sphinx-build -b html docs/source docs/build/html
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/build/html
+
+  deploy:
+    needs: build_docs
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
