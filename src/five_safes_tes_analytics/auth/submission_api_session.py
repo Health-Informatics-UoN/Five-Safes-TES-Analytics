@@ -87,6 +87,7 @@ class SubmissionAPISession():
         self.logout_url = os.path.join(self.base_keycloak_url, "protocol", "openid-connect", "logout")
 
         self._access_token = None
+        self._id_token = None
         self._refresh_token = None
 
     def __enter__(self):
@@ -104,6 +105,16 @@ class SubmissionAPISession():
         This value is automatically updated when a token refresh occurs.
         """
         return self._access_token
+
+    @property
+    def id_token(self):
+        """
+        Returns the current OIDC ID token string.
+
+        Used for S3/RustFS STS ``AssumeRoleWithWebIdentity`` exchanges.
+        Refreshed alongside the access token.
+        """
+        return self._id_token
     
     @property
     def refresh_token(self): 
@@ -114,9 +125,17 @@ class SubmissionAPISession():
         """
         return self._refresh_token 
     
-    def request(self, method, url, token_in="header", token_field="Authorization", **kwargs):
+    def request(
+        self,
+        method,
+        url,
+        token_in="header",
+        token_field="Authorization",
+        token_type="access",
+        **kwargs,
+    ):
         """
-        Perform an HTTP request authenticated with the current access token.
+        Perform an HTTP request authenticated with the current session token.
 
         The token is automatically injected either into the request headers
         or request body, depending on the `token_in` parameter.
@@ -134,12 +153,17 @@ class SubmissionAPISession():
             Target request URL. 
         
         token_in: str
-            Where to inject the access token:
+            Where to inject the token:
                 - "header" (default): adds "Authorization: Bearer <token>"
                 - "body": injects token into request payload
         
         token_field: str
             Header or body field name used for token injection.
+
+        token_type: str
+            Which session token to inject:
+                - "access" (default): Keycloak access token (TES / Submission API)
+                - "id": OIDC ID token (S3/RustFS STS web identity)
 
         **kwargs:
             Additional keyword arguments passed directly to `requests.request()`.
@@ -149,10 +173,10 @@ class SubmissionAPISession():
         requests.Response:
             The final HTTP response object. 
         """
-        response = self._send(method, url, token_in, token_field, **kwargs)
+        response = self._send(method, url, token_in, token_field, token_type, **kwargs)
         if self._is_token_error(response):
             self._refresh()
-            response = self._send(method, url, token_in, token_field, **kwargs)
+            response = self._send(method, url, token_in, token_field, token_type, **kwargs)
         return response
     
     def _validate_input(self): 
@@ -176,13 +200,25 @@ class SubmissionAPISession():
         if not all([parsed_base_url.scheme, parsed_base_url.netloc]): 
             raise ValueError("base_keycloak_url must be a valid URL!")
 
+    def _store_tokens(self, response_json: dict):
+        self._access_token = response_json["access_token"]
+        self._refresh_token = response_json["refresh_token"]
+        id_token = response_json.get("id_token")
+        if not id_token:
+            raise RuntimeError(
+                "Keycloak did not return an id_token. Ensure the client supports "
+                "OpenID Connect and that the 'openid' scope is allowed."
+            )
+        self._id_token = id_token
+
     def _login(self):
         payload = {
             "client_id": self.client_id, 
             "client_secret": self.client_secret, 
             "username": self.username, 
             "password": self.password, 
-            "grant_type": "password"
+            "grant_type": "password",
+            "scope": "openid",
         }
         headers = {
             "Content-Type": "application/x-www-form-urlencoded"
@@ -194,9 +230,7 @@ class SubmissionAPISession():
         )
 
         response.raise_for_status()
-        response_json = response.json()
-        self._access_token = response_json["access_token"]
-        self._refresh_token = response_json["refresh_token"]
+        self._store_tokens(response.json())
 
     def _refresh(self):
         response = requests.post(
@@ -206,12 +240,11 @@ class SubmissionAPISession():
                 "client_id": self.client_id,
                 "client_secret": self.client_secret,
                 "refresh_token": self.refresh_token,
+                "scope": "openid",
             },
         )
         response.raise_for_status()
-        response_json = response.json()
-        self._access_token = response_json["access_token"]
-        self._refresh_token = response_json["refresh_token"]
+        self._store_tokens(response.json())
 
     def _logout(self):
         requests.post(
@@ -222,17 +255,39 @@ class SubmissionAPISession():
             }
         )
         self._access_token = None
+        self._id_token = None
         self._refresh_token = None
 
-    def _send(self, method, url, token_in="header", token_field="Authorization", **kwargs): 
+    def _resolve_token(self, token_type: str) -> str:
+        if token_type == "access":
+            return self.access_token
+        if token_type == "id":
+            if not self.id_token:
+                raise RuntimeError(
+                    "No ID token available for STS exchange. "
+                    "Re-authenticate with the openid scope."
+                )
+            return self.id_token
+        raise ValueError(f"Unknown token_type value: {token_type}")
+
+    def _send(
+        self,
+        method,
+        url,
+        token_in="header",
+        token_field="Authorization",
+        token_type="access",
+        **kwargs,
+    ): 
         kwargs = kwargs.copy()
         headers = dict(kwargs.pop("headers", {}))
         data = dict(kwargs.pop("data", {}))
+        token = self._resolve_token(token_type)
 
         if token_in == "header":
-            headers[token_field] = f"Bearer {self.access_token}"
+            headers[token_field] = f"Bearer {token}"
         elif token_in == "body":
-            data[token_field] = self.access_token
+            data[token_field] = token
         else:
             raise ValueError(f"Unknown token_in value: {token_in}")
 

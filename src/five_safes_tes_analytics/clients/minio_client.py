@@ -1,6 +1,6 @@
 import os
 import time
-from urllib.parse import urlparse 
+from urllib.parse import urlparse, urlsplit, urlunsplit
 import json
 from typing import Dict, List, Optional, Union, Any
 import minio
@@ -15,6 +15,9 @@ from five_safes_tes_analytics.auth.submission_api_session import SubmissionAPISe
 
 # Load environment variables from .env file
 load_dotenv()
+
+STS_ACTION = "AssumeRoleWithWebIdentity"
+
 
 class TokenExpiredError(Exception):
     """Exception raised when the provided token has expired."""
@@ -49,11 +52,47 @@ class MinIOClient:
         
         self._client = None
         self._credentials = None
+
+    @staticmethod
+    def _strip_scheme(endpoint: str) -> str:
+        """Minio() expects host[:port] without an http(s):// scheme."""
+        parsed = urlparse(endpoint)
+        if parsed.scheme and parsed.netloc:
+            return parsed.netloc
+        return endpoint
+
+    @staticmethod
+    def _sts_endpoint_candidates(sts_endpoint: str) -> List[str]:
+        """
+        Return STS endpoints to try.
+
+        MinIO commonly exposes STS at ``/sts``. RustFS routes
+        ``AssumeRoleWithWebIdentity`` at the service root.
+        """
+        parsed = urlsplit(sts_endpoint)
+        candidates = [sts_endpoint]
+        if parsed.path.rstrip("/") == "/sts":
+            root_endpoint = urlunsplit(
+                (parsed.scheme, parsed.netloc, "/", parsed.query, parsed.fragment)
+            )
+            candidates.append(root_endpoint)
+        return candidates
+
+    @staticmethod
+    def _should_try_next_sts_endpoint(response) -> bool:
+        return (
+            response.status_code == 501
+            and "NotImplemented" in response.text
+            and "Unknown operation" in response.text
+        )
         
     def _exchange_token_for_credentials(self) -> Dict[str, str]:
         """
-        Exchange OIDC token for temporary AWS credentials.
-        
+        Exchange OIDC ID token for temporary AWS credentials via STS.
+
+        RustFS validates ``AssumeRoleWithWebIdentity`` with an ID token
+        (audience = Keycloak client id). Access tokens are used for TES.
+
         Returns:
             Dict[str, str]: Dictionary containing access_key, secret_key, and session_token
             
@@ -66,27 +105,43 @@ class MinIOClient:
         }
         
         data = {
-            'Action': 'AssumeRoleWithWebIdentity',
+            'Action': STS_ACTION,
             'Version': '2011-06-15',
             'DurationSeconds': '3600'
         }
         
         print("Exchanging token for credentials...")
 
-        response = self.token_session.request(
-            method="POST",
-            url=self.sts_endpoint, 
-            token_in="body",
-            token_field="WebIdentityToken",
-            headers=headers, 
-            data=data
-        )
-        
-        if response.status_code != 200:
+        candidates = self._sts_endpoint_candidates(self.sts_endpoint)
+        response = None
+        for endpoint in candidates:
+            response = self.token_session.request(
+                method="POST",
+                url=endpoint,
+                token_in="body",
+                token_field="WebIdentityToken",
+                token_type="id",
+                headers=headers,
+                data=data,
+            )
+
+            if response.status_code == 200:
+                break
+
+            if endpoint != candidates[-1] and self._should_try_next_sts_endpoint(response):
+                print(
+                    f"STS endpoint {endpoint} did not recognize {STS_ACTION}; "
+                    "retrying service root"
+                )
+                continue
+
             raise Exception(
                 f"Failed to exchange token for MinIO credentials: "
                 f"{response.status_code} - {response.text}"
             )
+
+        if response is None or response.status_code != 200:
+            raise Exception("Failed to exchange token for MinIO credentials")
     
         # Parse the STS response
         root = ET.fromstring(response.text)
@@ -117,7 +172,7 @@ class MinIOClient:
             self._credentials = self._exchange_token_for_credentials()
             
             self._client = Minio(
-                self.minio_endpoint,
+                self._strip_scheme(self.minio_endpoint),
                 access_key=self._credentials['access_key'],
                 secret_key=self._credentials['secret_key'],
                 session_token=self._credentials['session_token'],
@@ -130,9 +185,9 @@ class MinIOClient:
         """
         Determine whether MinIO uses encrypted communication.
         """
-        endpoint = os.environ.get("MINIO_STS_ENDPOINT")
+        endpoint = self.minio_endpoint or os.environ.get("MINIO_ENDPOINT") or os.environ.get("MINIO_STS_ENDPOINT")
         if not endpoint: 
-            raise ValueError("MINIO_STS_ENDPOINT is not set")
+            raise ValueError("MINIO_ENDPOINT / MINIO_STS_ENDPOINT is not set")
         
         parsed = urlparse(endpoint)
 
@@ -140,9 +195,13 @@ class MinIOClient:
             return True
         elif parsed.scheme == "http":
             return False
+        elif not parsed.scheme:
+            # Host-only endpoint: fall back to STS endpoint scheme if present.
+            sts = self.sts_endpoint or os.environ.get("MINIO_STS_ENDPOINT", "")
+            return urlparse(sts).scheme != "http"
         else:
             raise ValueError(
-                "MINIO_STS_ENDPOINT must start with http:// or https://"
+                "MINIO_ENDPOINT must start with http:// or https://, or be host[:port]"
             )
     
     def refresh_credentials(self):

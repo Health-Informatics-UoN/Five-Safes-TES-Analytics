@@ -21,7 +21,7 @@ def run_mean_analysis_example(analysis_runner: AnalysisRunner, concept_id: int, 
     Returns:
         Dict[str, Any]: Analysis results
     """
-    sql_schema = os.getenv("SQL_SCHEMA", "public")
+    sql_schema = os.getenv("SQL_SCHEMA", "\"NottinghamDemo\"")
     query_template = Template("""SELECT value_as_number FROM $schema.measurement 
 WHERE measurement_concept_id = $concept_id
 AND value_as_number IS NOT NULL""")

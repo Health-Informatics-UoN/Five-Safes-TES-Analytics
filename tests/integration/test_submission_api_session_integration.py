@@ -41,22 +41,27 @@ class TestSubmissionAPISessionIntegration:
     def test_login_on_real_submission_api_endpoint(self): 
         with SubmissionAPISession() as session: 
             self.validate_jwt_token(session.access_token)
+            self.validate_jwt_token(session.id_token)
             self.validate_jwt_token(session.refresh_token)
 
     @pytest.mark.integration 
     def test_refresh_on_real_submission_api_endpoint(self): 
         with SubmissionAPISession() as session: 
             access_token_before_refresh = session.access_token
+            id_token_before_refresh = session.id_token
             refresh_token_before_refresh = session.refresh_token 
 
             session._refresh()
 
             access_token_post_refresh = session.access_token
+            id_token_post_refresh = session.id_token
             refresh_token_post_refresh = session.refresh_token 
 
             self.validate_jwt_token(session.access_token)
+            self.validate_jwt_token(session.id_token)
             self.validate_jwt_token(session.refresh_token)
             assert access_token_before_refresh != access_token_post_refresh 
+            assert id_token_before_refresh != id_token_post_refresh
             assert refresh_token_before_refresh != refresh_token_post_refresh 
 
     @pytest.mark.integration 
@@ -83,7 +88,7 @@ class TestSubmissionAPISessionIntegration:
 
             client._client = None 
             client.refresh_credentials()
-            token_session._access_token = 'invalid'
+            token_session._id_token = 'invalid'
 
             client._get_client()
             minio_access_key_after = client._credentials["access_key"]
@@ -91,7 +96,7 @@ class TestSubmissionAPISessionIntegration:
 
             assert minio_access_key_after != minio_access_key_before
             assert minio_secret_key_after != minio_secret_key_before
-            self.validate_jwt_token(token_session.access_token)
+            self.validate_jwt_token(token_session.id_token)
     
     @pytest.mark.integration 
     def test_minio_client_list_buckets_after_token_invalidation(self):
@@ -106,13 +111,13 @@ class TestSubmissionAPISessionIntegration:
             buckets = client.list_buckets()
             minio_access_key_before = client._credentials["access_key"]
             minio_secret_key_before = client._credentials["secret_key"]
-            original_access = token_session.access_token
+            original_id_token = token_session.id_token
 
             assert isinstance(buckets, list)
 
             client._client = None 
             client.refresh_credentials()
-            token_session._access_token = "invalid"
+            token_session._id_token = "invalid"
             
             buckets = client.list_buckets()
             minio_access_key_after = client._credentials["access_key"]
@@ -121,6 +126,6 @@ class TestSubmissionAPISessionIntegration:
             assert isinstance(buckets, list)
             assert minio_access_key_after != minio_access_key_before
             assert minio_secret_key_after != minio_secret_key_before
-            self.validate_jwt_token(token_session.access_token)
-            token_session.access_token != original_access 
+            self.validate_jwt_token(token_session.id_token)
+            assert token_session.id_token != original_id_token 
     

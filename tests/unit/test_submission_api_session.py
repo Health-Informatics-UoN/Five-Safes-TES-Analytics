@@ -9,6 +9,7 @@ class TestSubmissionAPISessionUnit():
             mock_response = Mock() 
             mock_response.json.return_value = {
                 "access_token": "abc", 
+                "id_token": "id-abc",
                 "refresh_token": "xyz"
             }
             mock_response.raise_for_status.return_value = None
@@ -25,7 +26,34 @@ class TestSubmissionAPISessionUnit():
             session._login()
             
             assert session.access_token == "abc"
+            assert session.id_token == "id-abc"
             assert session.refresh_token == "xyz"
+            assert mock_requests.post.call_args.kwargs["data"]["scope"] == "openid"
+
+
+    def test_login_requires_id_token(self):
+        with patch("five_safes_tes_analytics.auth.submission_api_session.requests") as mock_requests:
+            mock_response = Mock()
+            mock_response.json.return_value = {
+                "access_token": "abc",
+                "refresh_token": "xyz",
+            }
+            mock_response.raise_for_status.return_value = None
+            mock_requests.post.return_value = mock_response
+
+            session = SubmissionAPISession(
+                client_id="fake_client",
+                client_secret="fake_secret",
+                username="username",
+                password="password",
+                base_keycloak_url="https://auth.com/realms/realm-name/",
+            )
+
+            try:
+                session._login()
+                assert False, "Expected RuntimeError when id_token is missing"
+            except RuntimeError as exc:
+                assert "id_token" in str(exc)
 
 
     def test_refresh_replaces_tokens(self): 
@@ -38,11 +66,13 @@ class TestSubmissionAPISessionUnit():
                 base_keycloak_url="https://auth.com/realms/realm-name/"
             ) 
             session._access_token = "abc"
+            session._id_token = "id-abc"
             session._refresh_token = "xyz"
 
             mock_response = Mock() 
             mock_response.json.return_value = {
                 "access_token": "123", 
+                "id_token": "id-123",
                 "refresh_token": "456"
             }
             mock_response.raise_for_status.return_value = None
@@ -51,6 +81,7 @@ class TestSubmissionAPISessionUnit():
             session._refresh()
 
             assert session.access_token == "123"
+            assert session.id_token == "id-123"
             assert session.refresh_token == "456"
 
 
@@ -64,6 +95,7 @@ class TestSubmissionAPISessionUnit():
                 base_keycloak_url="https://auth.com/realms/realm-name/"
             ) 
             session._access_token = "abc"
+            session._id_token = "id-abc"
             session._refresh_token = "xyz"
 
             mock_response = Mock(status_code=200)
@@ -102,6 +134,7 @@ class TestSubmissionAPISessionUnit():
                 base_keycloak_url="https://auth.com/realms/realm-name/"
             ) 
             session._access_token = "abc"
+            session._id_token = "id-abc"
             session._refresh_token = "xyz"
 
             mock_response_401 = Mock(status_code=401)
@@ -111,6 +144,7 @@ class TestSubmissionAPISessionUnit():
             mock_refresh_response = Mock() 
             mock_refresh_response.json.return_value = {
                 "access_token": "123", 
+                "id_token": "id-123",
                 "refresh_token": "456"
             }
             mock_refresh_response.raise_for_status.return_value = None
@@ -127,13 +161,19 @@ class TestSubmissionAPISessionUnit():
                 "fake_url",
                 token_in="body",
                 token_field="WebIdentityToken",
+                token_type="id",
                 data=data
             )
             
             assert mock_requests.request.call_count == 2
             assert response.status_code == 200
             assert session.access_token == "123"
+            assert session.id_token == "id-123"
             assert session.refresh_token == "456"
+            first_call_data = mock_requests.request.call_args_list[0].kwargs["data"]
+            assert first_call_data["WebIdentityToken"] == "id-abc"
+            second_call_data = mock_requests.request.call_args_list[1].kwargs["data"]
+            assert second_call_data["WebIdentityToken"] == "id-123"
 
 
     def test_logout_successful(self): 
@@ -146,11 +186,13 @@ class TestSubmissionAPISessionUnit():
                 base_keycloak_url="https://auth.com/realms/realm-name/"
             ) 
             session._access_token = "abc"
+            session._id_token = "id-abc"
             session._refresh_token = "xyz"
 
             session._logout()
 
             assert session.access_token is None 
+            assert session.id_token is None
             assert session.refresh_token is None
 
 
