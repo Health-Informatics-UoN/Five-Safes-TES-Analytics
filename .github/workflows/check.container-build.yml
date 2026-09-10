@@ -1,7 +1,9 @@
 name: Check Container Builds
 
 on:
-  pull_request:
+  push:
+    branches:
+      - "**"
 
 jobs:
   build:
