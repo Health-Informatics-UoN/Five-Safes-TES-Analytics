@@ -1,9 +1,7 @@
 name: Check Container Entrypoints
 
 on:
-  push:
-    branches:
-      - "**"
+  pull_request: 
 
 jobs:
   bunny-run:
