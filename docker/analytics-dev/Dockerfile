@@ -8,6 +8,6 @@ ENV UV_COMPILE_BYTECODE=1 \
 COPY pyproject.toml uv.lock ./
 COPY src ./src
 
-RUN uv sync --no-dev
+RUN uv sync --locked --no-dev
 
 ENTRYPOINT ["uv", "run", "--no-sync", "-m", "five_safes_tes_analytics.node.query_resolver"]
