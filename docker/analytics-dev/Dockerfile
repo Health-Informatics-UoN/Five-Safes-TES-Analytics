@@ -1,15 +1,18 @@
-FROM python:3.12
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
-# Set working directory inside container
 WORKDIR /app
 
-# Copy only the node subpackage into the container
-# This avoids installing the full package while preserving relative imports
-# TODO: Consider using uv workspace packages for cleaner separation of concerns
-COPY src/five_safes_tes_analytics/node /app/five_safes_tes_analytics/node
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
 
-# Install dependencies
-RUN pip install click sqlalchemy psycopg2-binary numpy tdigest
+COPY pyproject.toml uv.lock ./
+COPY README.md ./
+COPY src ./src
 
-# Entry point
-ENTRYPOINT ["python", "-m", "five_safes_tes_analytics.node.query_resolver"]
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN uv sync --locked --no-dev
+
+ENTRYPOINT ["uv", "run", "--no-sync", "-m", "five_safes_tes_analytics.node.query_resolver"]
