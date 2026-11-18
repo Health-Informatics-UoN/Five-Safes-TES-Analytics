@@ -1,0 +1,47 @@
+# This workflow is used to release the project.
+# It is triggered by a push to the main branch.
+# It will publish an edge container image
+# And run semantic release
+# If the release is triggered it will tag the container image
+
+name: Release
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  packages: write
+  id-token: write
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    uses: health-informatics-uon/workflows/.github/workflows/semantic-release.yml@1.8.2
+    with:
+      node-version: "24"
+    secrets: inherit
+
+  publish-container:
+    uses: health-informatics-uon/workflows/.github/workflows/publish-container.yml@1.8.2
+    with:
+      image-name: five-safes-tes-analytics
+      image-description: "Five Safes TES Analytics container image"
+      registry: ghcr.io
+      context: .
+      dockerfile: docker/analytics-dev/Dockerfile
+      platforms: linux/amd64,linux/arm64
+    secrets: inherit
+
+  semver-container:
+    uses: health-informatics-uon/workflows/.github/workflows/semver-container.yml@1.8.2
+    needs: [release, publish-container]
+    if: needs.release.outputs.release-created == 'true'
+    with:
+      image-name: five-safes-tes-analytics
+      registry: ghcr.io
+      tag: ${{ needs.release.outputs.release-tag }}
+      tag-latest: true
+    secrets: inherit

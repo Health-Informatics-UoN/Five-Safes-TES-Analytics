@@ -1,0 +1,18 @@
+# PR titles become the squash-merge commit message on main, which semantic-release
+# reads to decide the next version, so they must follow Conventional Commits
+# (e.g. `feat: ...` for a minor release, `fix: ...` for a patch).
+name: 'Check PR title'
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+
+jobs:
+  main:
+    uses: health-informatics-uon/workflows/.github/workflows/pr-title.yml@1.8.2
+    permissions:
+      pull-requests: read
