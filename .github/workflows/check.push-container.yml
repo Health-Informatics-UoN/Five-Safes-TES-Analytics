@@ -1,0 +1,47 @@
+# Builds this repository's container images for every pull request.
+# For pull requests from branches in this repo, it also publishes each image tagged
+# `pr-<number>`, `sha-<commit>` and `tree-<hash>`, so a pull request can be tested before it is merged.
+# Pull requests from forks and Dependabot only check the images build.
+# Images built on merge to main are published by the release workflows
+# (`release.dev.yml` and `release.bunny.yml`).
+
+name: Check and Push Containers
+
+on:
+  pull_request:
+
+# A new push to the pull request cancels the build of the previous one
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  publish-analytics-dev:
+    name: Build Analytics Dev Container
+    permissions:
+      contents: read
+      packages: write
+    uses: health-informatics-uon/workflows/.github/workflows/publish-pr-container.yml@1.8.2
+    with:
+      image-name: five-safes-tes-analytics-dev
+      image-description: "Five Safes TES Analytics (pull request build)"
+      registry: ghcr.io
+      context: .
+      dockerfile: docker/analytics-dev/Dockerfile
+      platforms: linux/amd64,linux/arm64
+    secrets: inherit
+
+  publish-bunny-cli:
+    name: Build Bunny CLI Container
+    permissions:
+      contents: read
+      packages: write
+    uses: health-informatics-uon/workflows/.github/workflows/publish-pr-container.yml@1.8.2
+    with:
+      image-name: five-safes-tes-analytics-bunny-cli
+      image-description: "Five Safes TES Analytics Bunny CLI (pull request build)"
+      registry: ghcr.io
+      context: ./docker/bunny-wrapper
+      dockerfile: docker/bunny-wrapper/Dockerfile
+      platforms: linux/amd64,linux/arm64
+    secrets: inherit

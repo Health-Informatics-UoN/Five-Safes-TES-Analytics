@@ -1,4 +1,4 @@
-ARG BUNNY_VERSION=1.6
+ARG BUNNY_VERSION=pr-331
 FROM ghcr.io/health-informatics-uon/hutch/bunny:${BUNNY_VERSION}
 
 # Specify non-CLI "required" config so users don't have to
