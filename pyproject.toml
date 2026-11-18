@@ -3,7 +3,7 @@ name = "five-safes-tes-analytics"
 version = "0.1.0"
 description = "Federated analysis tools for Five Safes TES"
 readme = "README.md"
-requires-python = ">=3.11.5"
+requires-python = ">=3.13"
 authors = [
   { name = "Anwar" }
 ]
