@@ -1,20 +1,32 @@
 # This workflow builds and publishes a Bunny CLI wrapper image for Five Safes TES.
-# It tracks the latest released version of the upstream Bunny project and only
-# builds a new image when a corresponding Bunny-versioned image does not already exist.
-name: Publish a Bunny CLI image compatible with Five Safes TES. 
+# It runs nightly and builds the wrapper on:
+#
+# - The latest Bunny release, tagged with the Bunny version (e.g. `1.9.9`),
+#   if that tag has not already been published.
+# - Each open hutch-bunny pull request that has a published image, so unreleased
+#   Bunny changes can be tested in TES. These are tagged `bunny-pr-<number>` (moves
+#   to the newest build of that pull request) and `bunny-sha-<commit>` (fixed).
+#   The `bunny-` prefix keeps them separate from this repository's own pull request tags.
+#   A pull request is rebuilt only when it has a new commit.
+#
+# Because this wrapper tracks Bunny versions, the repository does not maintain an
+# independent semantic versioning lifecycle for this image.
+name: Publish a Bunny CLI image compatible with Five Safes TES.
 
 on:
   schedule:
-    - cron: "0 0 * * *"  
+    - cron: "0 0 * * *"
 env:
   image-name: five-safes-tes-analytics-bunny-cli
-  repo-owner: ${{ github.repository_owner }}
   registry: ghcr.io
+  bunny-repo: health-informatics-uon/hutch-bunny
+  bunny-image: ghcr.io/health-informatics-uon/hutch/bunny
 
 jobs:
   publish-analytics-bunny:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: write
     steps:
       - name: Check out the repo
@@ -33,60 +45,68 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve latest Bunny release
-        id: bunny
-        run: |
-            TAG=$(gh api \
-            repos/health-informatics-uon/hutch-bunny/releases/latest \
-            --jq '.tag_name | ltrimstr("v")')
-            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Build and publish new Bunny release and pull request images
         env:
-            GH_TOKEN: ${{ github.token }}
-      
-      - name: Check if image already exists
-        id: exists
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_NAME: ${{ env.image-name }}
+          REGISTRY: ${{ env.registry }}
+          BUNNY_REPO: ${{ env.bunny-repo }}
+          BUNNY_IMAGE: ${{ env.bunny-image }}
         run: |
-            repo_owner_lower="${GITHUB_REPOSITORY_OWNER,,}"
-            if docker manifest inspect \
-                "ghcr.io/${repo_owner_lower}/${{ env.image-name }}:${{ steps.bunny.outputs.tag }}" >/dev/null 2>&1; then
-                echo "exists=true" >> "$GITHUB_OUTPUT"
-            else
-                echo "exists=false" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
+          failed=()
+
+          exists() { docker manifest inspect "$1" >/dev/null 2>&1; }
+
+          # build <Bunny image tag> <tag to publish>...
+          build() {
+            local base=$1; shift
+            local tags=()
+            for t in "$@"; do tags+=(--tag "${image}:${t}"); done
+            echo "::group::Building on Bunny ${base} as: $*"
+            if [ -n "${DRY_RUN:-}" ]; then
+              echo "[dry run] skipping build"
+            elif ! docker buildx build ./docker/bunny-wrapper \
+                --push \
+                --platform linux/amd64,linux/arm64 \
+                --build-arg "BUNNY_VERSION=${base}" \
+                --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+                --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+                --label "org.opencontainers.image.version=${base}" \
+                --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                --annotation "index,manifest:org.opencontainers.image.description=Five Safes TES Analytics Bunny CLI" \
+                "${tags[@]}"; then
+              failed+=("${base}")
             fi
+            echo "::endgroup::"
+          }
 
-      - name: Docker Metadata action
-        id: meta
-        if: steps.exists.outputs.exists == 'false'
-        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
-        env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
-        with:
-          images: ${{ env.registry }}/${{ env.repo-owner }}/${{ env.image-name }}
-          # Tag notes:
-          # The purpose of this container is to act as a wrapper around the real bunny image, tracking the bunny version.
-          # Therefore we only include the Bunny semver tag. 
-          tags: |
-            type=raw,value=${{ steps.bunny.outputs.tag }}
-          # Label notes:
-          # - The image version tracks the upstream Bunny release version
-          # - This repository does not have its own independent semver lifecycle
-          labels: |
-            org.opencontainers.image.revision={{sha}}
-            org.opencontainers.image.version=${{ steps.bunny.outputs.tag }}
+          # Latest Bunny release
+          release=$(gh api "repos/${BUNNY_REPO}/releases/latest" --jq '.tag_name | ltrimstr("v")')
+          if exists "${image}:${release}"; then
+            echo "Release ${release}: already published"
+          else
+            build "${release}" "${release}"
+          fi
 
-          annotations: |
-            org.opencontainers.image.description=Five Safes TES Analytics Bunny CLI 
+          # Open Bunny pull requests. Only those from branches in the Bunny repository have
+          # published images, tagged sha-<7-character commit> by Bunny's pull request workflow.
+          prs=$(gh api --paginate "repos/${BUNNY_REPO}/pulls?state=open&per_page=100" \
+                  --jq '.[] | select(.head.repo.full_name == .base.repo.full_name) | "\(.number) \(.head.sha)"')
+          while read -r number sha; do
+            [ -n "${number}" ] || continue
+            short=${sha:0:7}
+            if ! exists "${BUNNY_IMAGE}:sha-${short}"; then
+              echo "Bunny PR #${number} (${short}): no Bunny image yet, skipping"
+            elif exists "${image}:bunny-sha-${short}"; then
+              echo "Bunny PR #${number} (${short}): already published"
+            else
+              build "sha-${short}" "bunny-pr-${number}" "bunny-sha-${short}"
+            fi
+          done <<< "${prs}"
 
-      - name: Build and push Docker images
-        if: steps.exists.outputs.exists == 'false'
-        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
-        with:
-          context: "./docker/bunny-wrapper"
-          file: "./docker/bunny-wrapper/Dockerfile"
-          build-args: |
-            BUNNY_VERSION=${{ steps.bunny.outputs.tag }}
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error::Failed to build on Bunny: ${failed[*]}"
+            exit 1
+          fi
