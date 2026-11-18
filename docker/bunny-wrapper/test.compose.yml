@@ -22,7 +22,13 @@ services:
       SYNTHETIC: true
   
   bunny:
-    build: .
+    build:
+      context: .
+      args:
+        # Any tag of ghcr.io/health-informatics-uon/hutch/bunny, e.g. a release (1.6)
+        # or an unreleased pull request build (pr-331, sha-c2ac508)
+        # If unset, the Dockerfile's default is used
+        - BUNNY_VERSION
     depends_on:
       omop-lite:
         condition: service_completed_successfully

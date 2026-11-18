@@ -23,12 +23,12 @@ So this code does the **per-node, partial** work; aggregation across TREs happen
 
 ## Main modules
 
-| File | Role |
-|------|------|
+| File | Role                                                                                                                                                      |
+|------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `query_resolver.py` | Click CLI, connection string parsing (`parse_connection_string`), and `process_query()` (orchestrates DB connection, registry lookup, execution, output). |
-| `local_processing.py` | `LOCAL_PROCESSING_CLASSES` registry and concrete analysis classes (Mean, Variance, etc.). |
-| `local_processing_base.py` | `BaseLocalProcessing` abstract base class (query building, optional Python analysis hook). |
-| `Dockerfile` | Builds the image that runs this code (Python 3.12, dependencies, entrypoint `query_resolver.py`). |
+| `local_processing.py` | `LOCAL_PROCESSING_CLASSES` registry and concrete analysis classes (Mean, Variance, etc.).                                                                 |
+| `local_processing_base.py` | `BaseLocalProcessing` abstract base class (query building, optional Python analysis hook).                                                                |
+| `Dockerfile` | Builds the image that runs this code (Python 3.13, dependencies, entrypoint `query_resolver.py`).                                                         |
 
 ## Database connection
 
