@@ -1,10 +1,11 @@
-# Builds this repository's container images for every pull request.
-# - Analytics: only checks the image builds (`publish: false`).
-# - Bunny CLI: for pull requests from branches in this repo, also publishes the image tagged
-#   `pr-<number>`, `sha-<commit>` and `tree-<hash>`, so it can be tested in TES before it is merged.
-#   Pull requests from forks and Dependabot only check the image builds.
-# Release images are published by `release.yml` (analytics, on merge to main)
-# and `release.bunny.yml` (Bunny CLI, nightly).
+# Checks that this repository's container images (analytics and Bunny CLI) build
+# for every pull request to this repository. Both jobs set `publish: false`, so this
+# repository's own pull requests push nothing and create no image tags.
+# Images are published elsewhere:
+# - `release.yml`: the analytics image, on merge to main.
+# - `release.bunny.yml` (nightly): the Bunny CLI image on each new Bunny release
+#   (e.g. `1.9.9`) and on each open hutch-bunny pull request
+#   (`bunny-pr-<number>`, `bunny-sha-<commit>`).
 
 name: Check and Push Containers
 
