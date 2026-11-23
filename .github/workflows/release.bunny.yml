@@ -7,7 +7,8 @@
 #   Bunny changes can be tested in TES. These are tagged `bunny-pr-<number>` (moves
 #   to the newest build of that pull request) and `bunny-sha-<commit>` (fixed).
 #   The `bunny-` prefix keeps them separate from this repository's own pull request tags.
-#   A pull request is rebuilt only when it has a new commit.
+#   A pull request is rebuilt only when it has a new commit. If its commit was already
+#   wrapped, `bunny-pr-<number>` is pointed at that existing image without rebuilding.
 #
 # Because this wrapper tracks Bunny versions, the repository does not maintain an
 # independent semantic versioning lifecycle for this image.
@@ -59,6 +60,19 @@ jobs:
 
           exists() { docker manifest inspect "$1" >/dev/null 2>&1; }
 
+          # Digest of an image tag, or nothing if the tag does not exist
+          digest() { docker buildx imagetools inspect "$1" --format '{{.Manifest.Digest}}' 2>/dev/null || true; }
+
+          # retag <existing tag> <tag to point at it>: copies the manifest, no rebuild
+          retag() {
+            echo "Pointing ${2} at ${1}"
+            if [ -n "${DRY_RUN:-}" ]; then
+              echo "[dry run] skipping retag"
+            elif ! docker buildx imagetools create --tag "${image}:${2}" "${image}:${1}"; then
+              failed+=("${2}")
+            fi
+          }
+
           # build <Bunny image tag> <tag to publish>...
           build() {
             local base=$1; shift
@@ -100,13 +114,19 @@ jobs:
             if ! exists "${BUNNY_IMAGE}:sha-${short}"; then
               echo "Bunny PR #${number} (${short}): no Bunny image yet, skipping"
             elif exists "${image}:bunny-sha-${short}"; then
-              echo "Bunny PR #${number} (${short}): already published"
+              # Already wrapped (e.g. the PR was reset to an earlier commit, or another
+              # PR shares this commit), so make sure this PR's moving tag points at it
+              if [ "$(digest "${image}:bunny-pr-${number}")" = "$(digest "${image}:bunny-sha-${short}")" ]; then
+                echo "Bunny PR #${number} (${short}): already published"
+              else
+                retag "bunny-sha-${short}" "bunny-pr-${number}"
+              fi
             else
               build "sha-${short}" "bunny-pr-${number}" "bunny-sha-${short}"
             fi
           done <<< "${prs}"
 
           if [ ${#failed[@]} -gt 0 ]; then
-            echo "::error::Failed to build on Bunny: ${failed[*]}"
+            echo "::error::Failed to build or retag: ${failed[*]}"
             exit 1
           fi

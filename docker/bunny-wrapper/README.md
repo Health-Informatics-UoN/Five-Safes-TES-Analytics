@@ -57,8 +57,9 @@ Bunny publishes an image for each pull request opened from a branch in its own r
 ```bash
 BUNNY_VERSION=pr-331 docker compose -f test.compose.yml build bunny
 docker compose -f test.compose.yml up -d --wait db
-docker compose -f test.compose.yml up omop-lite
+docker compose -f test.compose.yml run --rm --no-deps omop-lite
 docker compose -f test.compose.yml run --rm --no-deps bunny
+docker compose -f test.compose.yml down
 ```
 
-Results are written to `./test-output/output.json`. Don't use `--abort-on-container-exit`: `omop-lite` exits once it has loaded the data, and that flag would stop the database too.
+Each step returns when it finishes, so this can be run as a script: the database is started and health-checked first, then the data loader and Bunny run as one-off containers without their dependencies. Results are written to `./test-output/output.json`. `down` stops the database afterwards.
