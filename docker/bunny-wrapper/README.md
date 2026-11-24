@@ -49,3 +49,17 @@ bunny --body /var/queries/availability.json --o /tmp/output.json
 or using `docker compose up`:
 
 `docker compose -f test.compose.yml up`
+
+### Testing an unreleased Bunny version
+
+Bunny publishes an image for each pull request opened from a branch in its own repository, tagged `pr-<number>` and `sha-<short commit>`. To test the wrapper against one, set `BUNNY_VERSION` (if unset, the default in the `Dockerfile` is used):
+
+```bash
+BUNNY_VERSION=pr-331 docker compose -f test.compose.yml build bunny
+docker compose -f test.compose.yml up -d --wait db
+docker compose -f test.compose.yml run --rm --no-deps omop-lite
+docker compose -f test.compose.yml run --rm --no-deps bunny
+docker compose -f test.compose.yml down
+```
+
+Each step returns when it finishes, so this can be run as a script: the database is started and health-checked first, then the data loader and Bunny run as one-off containers without their dependencies. Results are written to `./test-output/output.json`. `down` stops the database afterwards.

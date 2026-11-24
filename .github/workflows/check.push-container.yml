@@ -1,0 +1,51 @@
+# Checks that this repository's container images (analytics and Bunny CLI) build
+# for every pull request to this repository. Both jobs set `publish: false`, so this
+# repository's own pull requests push nothing and create no image tags.
+# Images are published elsewhere:
+# - `release.yml`: the analytics image, on merge to main.
+# - `release.bunny.yml` (nightly): the Bunny CLI image on each new Bunny release
+#   (e.g. `1.9.9`) and on each open hutch-bunny pull request
+#   (`bunny-pr-<number>`, `bunny-sha-<commit>`).
+
+name: Check and Push Containers
+
+on:
+  pull_request:
+
+# A new push to the pull request cancels the build of the previous one
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build-analytics:
+    name: Build Analytics Container
+    permissions:
+      contents: read
+      packages: write
+    uses: health-informatics-uon/workflows/.github/workflows/publish-pr-container.yml@1.8.2
+    with:
+      image-name: five-safes-tes-analytics
+      image-description: "Five Safes TES Analytics (pull request build)"
+      registry: ghcr.io
+      context: .
+      dockerfile: docker/analytics-dev/Dockerfile
+      platforms: linux/amd64,linux/arm64
+      publish: false
+    secrets: inherit
+
+  publish-bunny-cli:
+    name: Build Bunny CLI Container
+    permissions:
+      contents: read
+      packages: write
+    uses: health-informatics-uon/workflows/.github/workflows/publish-pr-container.yml@1.8.2
+    with:
+      image-name: five-safes-tes-analytics-bunny-cli
+      image-description: "Five Safes TES Analytics Bunny CLI (pull request build)"
+      registry: ghcr.io
+      context: ./docker/bunny-wrapper
+      dockerfile: docker/bunny-wrapper/Dockerfile
+      platforms: linux/amd64,linux/arm64
+      publish: false
+    secrets: inherit
