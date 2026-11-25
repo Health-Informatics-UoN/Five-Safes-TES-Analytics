@@ -1,14 +1,16 @@
 # This workflow builds and publishes a Bunny CLI wrapper image for Five Safes TES.
 # It runs nightly and builds the wrapper on:
 #
-# - The latest Bunny release, tagged with the Bunny version (e.g. `1.9.9`),
-#   if that tag has not already been published.
+# - The latest Bunny release, tagged with the Bunny version (e.g. `1.9.9`) and `latest`,
+#   if that tag has not already been published. If it has, `latest` is pointed at it
+#   without rebuilding.
 # - Each open hutch-bunny pull request that has a published image, so unreleased
 #   Bunny changes can be tested in TES. These are tagged `bunny-pr-<number>` (moves
 #   to the newest build of that pull request) and `bunny-sha-<commit>` (fixed).
 #   The `bunny-` prefix keeps them separate from this repository's own pull request tags.
 #   A pull request is rebuilt only when it has a new commit. If its commit was already
 #   wrapped, `bunny-pr-<number>` is pointed at that existing image without rebuilding.
+#   Pull request builds are never tagged `latest`.
 #
 # Because this wrapper tracks Bunny versions, the repository does not maintain an
 # independent semantic versioning lifecycle for this image.
@@ -63,32 +65,43 @@ jobs:
           # Digest of an image tag, or nothing if the tag does not exist
           digest() { docker buildx imagetools inspect "$1" --format '{{.Manifest.Digest}}' 2>/dev/null || true; }
 
-          # retag <existing tag> <tag to point at it>: copies the manifest, no rebuild
+          # retag <existing tag> <tag to point at it>: copies the manifest, no rebuild.
+          # --prefer-index=false makes an exact copy (same digest), so the digest
+          # comparisons below see the tags as matching on the next run.
           retag() {
             echo "Pointing ${2} at ${1}"
             if [ -n "${DRY_RUN:-}" ]; then
               echo "[dry run] skipping retag"
-            elif ! docker buildx imagetools create --tag "${image}:${2}" "${image}:${1}"; then
+            elif ! docker buildx imagetools create --prefer-index=false --tag "${image}:${2}" "${image}:${1}"; then
               failed+=("${2}")
             fi
           }
 
           # build <Bunny image tag> <tag to publish>...
+          # The Bunny image is pinned by digest, so the build uses exactly the image checked.
           build() {
             local base=$1; shift
             local tags=()
             for t in "$@"; do tags+=(--tag "${image}:${t}"); done
-            echo "::group::Building on Bunny ${base} as: $*"
-            if [ -n "${DRY_RUN:-}" ]; then
+            local base_sha
+            base_sha=$(digest "${BUNNY_IMAGE}:${base}")
+            echo "::group::Building on Bunny ${base} (${base_sha}) as: $*"
+            if [ -z "${base_sha}" ]; then
+              echo "Bunny image ${base} not found"
+              failed+=("${base}")
+            elif [ -n "${DRY_RUN:-}" ]; then
               echo "[dry run] skipping build"
             elif ! docker buildx build ./docker/bunny-wrapper \
                 --push \
                 --platform linux/amd64,linux/arm64 \
-                --build-arg "BUNNY_VERSION=${base}" \
+                --build-arg "BUNNY_VERSION=${base}@${base_sha}" \
                 --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
                 --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
                 --label "org.opencontainers.image.version=${base}" \
                 --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                --label "org.opencontainers.image.description=Five Safes TES Analytics Bunny CLI" \
+                --label "org.opencontainers.image.base.name=${BUNNY_IMAGE}:${base}" \
+                --label "org.opencontainers.image.base.digest=${base_sha}" \
                 --annotation "index,manifest:org.opencontainers.image.description=Five Safes TES Analytics Bunny CLI" \
                 "${tags[@]}"; then
               failed+=("${base}")
@@ -98,10 +111,12 @@ jobs:
 
           # Latest Bunny release
           release=$(gh api "repos/${BUNNY_REPO}/releases/latest" --jq '.tag_name | ltrimstr("v")')
-          if exists "${image}:${release}"; then
-            echo "Release ${release}: already published"
+          if ! exists "${image}:${release}"; then
+            build "${release}" "${release}" latest
+          elif [ "$(digest "${image}:latest")" = "$(digest "${image}:${release}")" ]; then
+            echo "Release ${release}: already published as latest"
           else
-            build "${release}" "${release}"
+            retag "${release}" latest
           fi
 
           # Open Bunny pull requests. Only those from branches in the Bunny repository have
