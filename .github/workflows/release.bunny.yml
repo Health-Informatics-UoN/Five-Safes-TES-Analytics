@@ -65,12 +65,14 @@ jobs:
           # Digest of an image tag, or nothing if the tag does not exist
           digest() { docker buildx imagetools inspect "$1" --format '{{.Manifest.Digest}}' 2>/dev/null || true; }
 
-          # retag <existing tag> <tag to point at it>: copies the manifest, no rebuild
+          # retag <existing tag> <tag to point at it>: copies the manifest, no rebuild.
+          # --prefer-index=false makes an exact copy (same digest), so the digest
+          # comparisons below see the tags as matching on the next run.
           retag() {
             echo "Pointing ${2} at ${1}"
             if [ -n "${DRY_RUN:-}" ]; then
               echo "[dry run] skipping retag"
-            elif ! docker buildx imagetools create --tag "${image}:${2}" "${image}:${1}"; then
+            elif ! docker buildx imagetools create --prefer-index=false --tag "${image}:${2}" "${image}:${1}"; then
               failed+=("${2}")
             fi
           }
